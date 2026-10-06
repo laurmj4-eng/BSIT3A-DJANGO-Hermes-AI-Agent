@@ -96,7 +96,6 @@ mj_django/
 ├── manage.py
 ├── requirements.txt
 ├── pytest.ini
-├── bsitcrud.sql            # database dump
 ├── mysite/                 # project configuration
 │   ├── settings.py
 │   ├── urls.py
@@ -118,6 +117,9 @@ mj_django/
 │   ├── users/              # user list
 │   ├── info.html
 │   └── home.html           # dashboard
+├── sql/
+│   ├── bsitcrud.sql        # database dump (schema + data)
+│   └── README.md           # import / export guide
 └── static/
     ├── css/app-theme.css   # custom design system
     ├── js/
@@ -166,7 +168,7 @@ mysql -u root -e "CREATE DATABASE bsitcrud CHARACTER SET utf8mb4 COLLATE utf8mb4
 Optionally import the included dump instead:
 
 ```bash
-mysql -u root bsitcrud < bsitcrud.sql
+mysql -u root bsitcrud < sql/bsitcrud.sql
 ```
 
 ### 5. Configure the database connection
