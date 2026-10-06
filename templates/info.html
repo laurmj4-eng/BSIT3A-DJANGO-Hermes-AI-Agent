@@ -19,7 +19,7 @@
   <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2 mb-1">
     <form method="GET" class="w-100" style="max-width: 420px;">
       <div class="input-group">
-        <span class="input-group-text"><i class="ti ti-search"></i></span>
+        <span class="input-group-text"><i class="fas fa-search"></i></span>
         <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Search by name, address, or email...">
         {% if query %}
         <a href="{% url 'info:info_list' %}" class="btn btn-outline-secondary">Clear</a>
@@ -119,7 +119,7 @@
         {% if infos.has_previous %}
         <li class="page-item">
           <a class="page-link" href="?page={{ infos.previous_page_number }}{% if query %}&q={{ query }}{% endif %}">
-            <i class="ti ti-chevron-left"></i> prev
+            <i class="fas fa-chevron-left"></i> prev
           </a>
         </li>
         {% endif %}
@@ -131,7 +131,7 @@
         {% if infos.has_next %}
         <li class="page-item">
           <a class="page-link" href="?page={{ infos.next_page_number }}{% if query %}&q={{ query }}{% endif %}">
-            next <i class="ti ti-chevron-right"></i>
+            next <i class="fas fa-chevron-right"></i>
           </a>
         </li>
         {% endif %}

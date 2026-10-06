@@ -99,6 +99,24 @@ def _validate_registration_data(data):
     return errors
 
 
+def _login_context():
+    """Live numbers shown on the login page's brand panel.
+
+    Wrapped in a broad guard: the login page must render even if a table is
+    missing (e.g. migrations not yet applied on a fresh checkout).
+    """
+    try:
+        from apps.news.feeds import FEEDS
+        from apps.news.models import Article
+
+        return {
+            'stat_articles': Article.objects.count(),
+            'stat_sources': len(FEEDS),
+        }
+    except Exception:
+        return {'stat_articles': 0, 'stat_sources': 0}
+
+
 @require_http_methods(['GET', 'POST'])
 def login_view(request):
     if request.user.is_authenticated:
@@ -107,10 +125,12 @@ def login_view(request):
     failed_attempts, remaining = _get_lock_state(request)
     if remaining is not None:
         messages.error(request, f'Too many failed attempts. Try again in {remaining} seconds.')
-        return render(request, 'auth/login.html', {'locked': True, 'remaining': remaining})
+        return render(request, 'auth/login.html', {
+            'locked': True, 'remaining': remaining, **_login_context(),
+        })
 
     if request.method == 'GET':
-        return render(request, 'auth/login.html')
+        return render(request, 'auth/login.html', _login_context())
 
     username = request.POST.get('username', '').strip()
     password = request.POST.get('password', '')
@@ -126,11 +146,18 @@ def login_view(request):
     if failed_attempts >= MAX_FAILED_ATTEMPTS:
         remaining = _set_lock_state(request)
         messages.error(request, LOCKED_MESSAGE)
-        return render(request, 'auth/login.html', {'locked': True, 'remaining': remaining})
+        return render(request, 'auth/login.html', {
+            'locked': True, 'remaining': remaining, **_login_context(),
+        })
 
     remaining_attempts = MAX_FAILED_ATTEMPTS - failed_attempts
     messages.error(request, f'{INVALID_LOGIN_MESSAGE} {remaining_attempts} attempts remaining.')
-    return render(request, 'auth/login.html')
+    # Keep what they typed so they only have to fix the password.
+    return render(request, 'auth/login.html', {
+        'username_value': username,
+        'attempts_left': remaining_attempts,
+        **_login_context(),
+    })
 
 
 def logout_view(request):
@@ -140,7 +167,36 @@ def logout_view(request):
 
 @login_required(login_url='login')
 def home(request):
-    return render(request, 'home.html')
+    """Dashboard: headline AI-news stats plus the newest articles."""
+    from django.contrib.auth.models import User
+    from django.db.models import Count
+    from apps.info.models import Info
+    from apps.news.feeds import FEEDS
+    from apps.news.models import Article
+
+    articles = Article.objects.all()
+    latest = articles[:6]
+    last_updated = articles.order_by('-fetched_at').values_list(
+        'fetched_at', flat=True
+    ).first()
+
+    # Article count per source, biggest first, for the mini breakdown table.
+    by_source = (
+        articles.values('source')
+        .annotate(total=Count('id'))
+        .order_by('-total')[:6]
+    )
+
+    return render(request, 'home.html', {
+        'total_articles': articles.count(),
+        'saved_articles': articles.filter(is_saved=True).count(),
+        'total_sources': len(FEEDS),
+        'total_users': User.objects.count(),
+        'total_infos': Info.objects.count(),
+        'latest_articles': latest,
+        'latest_sources': by_source,
+        'last_updated': last_updated,
+    })
 
 
 @require_http_methods(['GET', 'POST'])

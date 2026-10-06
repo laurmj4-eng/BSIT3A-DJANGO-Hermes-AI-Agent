@@ -5,154 +5,271 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-  <title>
-    Sign in - Azuelo Technology
-  </title>
-  <link href="{% static 'libs/jsvectormap/dist/jsvectormap.css' %}" rel="stylesheet" />
+  <title>Sign in - Hermes AI News Agent</title>
   <link href="{% static 'css/tabler.css' %}" rel="stylesheet" />
-  <link href="{% static 'css/tabler-flags.css' %}" rel="stylesheet" />
-  <link href="{% static 'css/tabler-socials.css' %}" rel="stylesheet" />
-  <link href="{% static 'css/tabler-payments.css' %}" rel="stylesheet" />
-  <link href="{% static 'css/tabler-vendors.css' %}" rel="stylesheet" />
-  <link href="{% static 'css/tabler-marketing.css' %}" rel="stylesheet" />
   <link href="{% static 'css/tabler-themes.css' %}" rel="stylesheet" />
+  <link href="{% static 'css/app-theme.css' %}" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    @import url("https://rsms.me/inter/inter.css");
+  </style>
 </head>
 
 <body>
   <script src="{% static 'js/tabler-theme.js' %}"></script>
-  <div class="page page-center">
-    <div class="container container-tight py-4">
 
-     <div class="card card-md">
-      <div class="card-body">
+  <div class="auth-page">
 
-        <center class="mt-n4">
-        <i class='far fa-calendar' style='font-size:40px'></i>
-        </center>
-        <h2 class="h3 text-center mb-4">Sign in to start your session</h2>
+    <!-- ============ BRAND PANEL ============ -->
+    <section class="auth-brand" aria-hidden="true">
+      <div class="auth-brand-top">
+        <span class="auth-brand-mark"><i class="fas fa-robot"></i></span>
+        <span>
+          <span class="auth-brand-name">Hermes<span class="text-warning">AI</span></span>
+          <span class="auth-brand-sub">News Agent</span>
+        </span>
+      </div>
 
-        <form method="post">
+      <div>
+        <h1 class="auth-headline">
+          The AI news that<br><span class="accent">moves the industry.</span>
+        </h1>
+        <p class="auth-lede">
+          Hermes gathers headlines from the sources that matter, so you get one
+          clean intelligence feed instead of ten open tabs.
+        </p>
+
+        <ul class="auth-features">
+          <li>
+            <i class="fas fa-rss"></i>
+            <span>{{ stat_sources }} live feeds, refreshed on demand</span>
+          </li>
+          <li>
+            <i class="fas fa-bolt"></i>
+            <span>Search and filter across every cached headline</span>
+          </li>
+          <li>
+            <i class="fas fa-bookmark"></i>
+            <span>Save stories to read later</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="auth-stats">
+        <div>
+          <span class="auth-stat-value">{{ stat_articles }}</span>
+          <span class="auth-stat-label">Articles</span>
+        </div>
+        <div>
+          <span class="auth-stat-value">{{ stat_sources }}</span>
+          <span class="auth-stat-label">Sources</span>
+        </div>
+        <div>
+          <span class="auth-stat-value">24/7</span>
+          <span class="auth-stat-label">Coverage</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FORM PANEL ============ -->
+    <main class="auth-panel">
+      <div class="auth-card">
+
+        <div class="auth-card-head">
+          <h2 class="auth-title">Welcome back</h2>
+          <p class="auth-sub">Sign in to open your intelligence feed.</p>
+        </div>
+
+        {% if messages %}
+          {% for message in messages %}
+            <div id="error-message"
+                 class="alert {% if locked %}alert-danger auth-locked-alert{% else %}alert-danger{% endif %} auth-alert"
+                 role="alert">
+              <i class="fas {% if locked %}fa-lock{% else %}fa-circle-exclamation{% endif %}"></i>
+              <div>
+                {% if locked %}
+                  Too many failed attempts. Please wait
+                  <span class="countdown fw-bold" id="lockCountdown">{{ remaining }}</span>s
+                  before trying again.
+                {% else %}
+                  {{ message }}
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        {% endif %}
+
+        {% if locked %}
+          <div class="mb-3">
+            <span class="auth-lock-badge">
+              <i class="fas fa-shield-halved"></i>
+              Locked — retry in <span class="countdown" id="lockBadgeCountdown">{{ remaining }}</span>s
+            </span>
+          </div>
+        {% endif %}
+
+        <form method="post" id="loginForm" novalidate>
           {% csrf_token %}
 
-          {% if messages %}
-          {% for message in messages %}
-          <div id="error-message" class="alert alert-danger">
-            {{ message }}
-          </div>
-          {% endfor %}
-          {% endif %}
           <div class="mb-3">
-            <label class="form-label">Username</label>
-            <input type="text" class="form-control" name="username" autocomplete="off" {% if locked %}disabled{% endif %}>
-          </div>
-          <div class="mb-2">
-            <label class="form-label">
-              Password
-            </label>
-            <div class="input-group input-group-flat">
-              <input type="password" class="form-control" name="password" autocomplete="off" {% if locked %}disabled{% endif %}>
+            <label class="form-label" for="id_username">Username</label>
+            <div class="auth-field" id="usernameField">
+              <i class="fas fa-user field-icon"></i>
+              <input type="text"
+                     id="id_username"
+                     class="form-control"
+                     name="username"
+                     value="{{ username_value|default:'' }}"
+                     placeholder="Enter your username"
+                     autocomplete="username"
+                     autofocus
+                     required
+                     {% if locked %}disabled{% endif %}>
             </div>
           </div>
-          <div class="form-footer d-flex justify-content-end">
-            <button type="submit" class="btn btn-primary w-50">
-              <i class="fas fa-sign-in-alt me-1"></i> Sign in
+
+          <div class="mb-2">
+            <label class="form-label" for="id_password">Password</label>
+            <div class="auth-field" id="passwordField">
+              <i class="fas fa-lock field-icon"></i>
+              <input type="password"
+                     id="id_password"
+                     class="form-control has-trailing"
+                     name="password"
+                     placeholder="Enter your password"
+                     autocomplete="current-password"
+                     required
+                     {% if locked %}disabled{% endif %}>
+              <button type="button"
+                      class="pw-toggle"
+                      id="pwToggle"
+                      aria-label="Show password"
+                      aria-pressed="false"
+                      title="Show password">
+                <i class="fas fa-eye" id="pwToggleIcon"></i>
+              </button>
+            </div>
+            <span class="auth-caps" id="capsHint">
+              <i class="fas fa-triangle-exclamation"></i> Caps Lock is on
+            </span>
+          </div>
+
+          <div class="form-footer mt-4">
+            <button type="submit"
+                    class="btn btn-primary w-100 auth-submit"
+                    id="loginSubmit"
+                    {% if locked %}disabled{% endif %}>
+              <i class="fas fa-sign-in-alt me-1" id="submitIcon"></i>
+              <span id="submitLabel">{% if locked %}Locked{% else %}Sign in{% endif %}</span>
             </button>
           </div>
-       </form>
-     </div>
-   </div>
- </div>
- <!-- <div class="text-center text-secondary mt-n1">
-  Don't have an account?
-  <a href="{% url 'register' %}" class="text-primary fw-bold">Register</a>
- </div> -->
-</div>
+        </form>
 
-{% include 'theme/settings.html' %}
+        <div class="auth-foot">
+          <i class="fas fa-shield-halved me-1"></i>
+          Protected by rate limiting after 5 failed attempts
+        </div>
+      </div>
+    </main>
+  </div>
 
-<script src="{% static 'js/tabler.js' %}" defer></script>
-<script src="{% static 'js/demo.js' %}" defer></script>
 {% if locked %}
 <script>
-  let remaining = {{ remaining }};
-  const messageBox = document.getElementById("error-message");
+  // Live countdown; reload the page once the lock expires.
+  (function () {
+    var remaining = {{ remaining }};
+    var messageBox = document.getElementById("error-message");
+    var countdown = document.getElementById("lockCountdown");
+    var badgeCountdown = document.getElementById("lockBadgeCountdown");
 
-  let interval = setInterval(function() {
-    remaining--;
+    var interval = setInterval(function () {
+      remaining--;
 
-    if (remaining > 0) {
-      messageBox.innerHTML =
-      "Too many failed attempts. Try again in " + remaining + " seconds.";
-    } else {
-      clearInterval(interval);
-      window.location.href = "{% url 'login' %}";
-    }
-
-  }, 1000);
+      if (remaining > 0) {
+        if (countdown) countdown.textContent = remaining;
+        if (badgeCountdown) badgeCountdown.textContent = remaining;
+      } else {
+        clearInterval(interval);
+        window.location.href = "{% url 'login' %}";
+      }
+    }, 1000);
+  })();
 </script>
 {% endif %}
+
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    var themeConfig = {
-      theme: "light",
-      "theme-base": "gray",
-      "theme-font": "sans-serif",
-      "theme-primary": "blue",
-      "theme-radius": "1",
-    };
+    var form = document.getElementById("loginForm");
+    var username = document.getElementById("id_username");
+    var password = document.getElementById("id_password");
+    var toggle = document.getElementById("pwToggle");
+    var toggleIcon = document.getElementById("pwToggleIcon");
+    var capsHint = document.getElementById("capsHint");
+    var submit = document.getElementById("loginSubmit");
+    var submitLabel = document.getElementById("submitLabel");
+    var submitIcon = document.getElementById("submitIcon");
 
-    var url = new URL(window.location);
-    var form = document.getElementById("offcanvasSettings");
-    var resetButton = document.getElementById("reset-changes");
+    /* ---- Show / hide password ---- */
+    if (toggle) {
+      toggle.addEventListener("click", function () {
+        var showing = password.type === "text";
+        password.type = showing ? "password" : "text";
+        toggle.setAttribute("aria-pressed", String(!showing));
+        toggle.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+        toggle.title = showing ? "Show password" : "Hide password";
+        toggleIcon.className = showing ? "fas fa-eye" : "fas fa-eye-slash";
+        password.focus();
+      });
+    }
 
-    var checkItems = function () {
-      for (var key in themeConfig) {
-        var value =
-        window.localStorage["tabler-" + key] || themeConfig[key];
+    /* ---- Caps Lock warning ---- */
+    function checkCaps(event) {
+      if (typeof event.getModifierState !== "function") return;
+      capsHint.classList.toggle("show", event.getModifierState("CapsLock"));
+    }
+    if (capsHint) {
+      password.addEventListener("keyup", checkCaps);
+      password.addEventListener("keydown", checkCaps);
+      password.addEventListener("blur", function () {
+        capsHint.classList.remove("show");
+      });
+    }
 
-        if (!!value) {
-          var radios = form.querySelectorAll(`[name="${key}"]`);
+    /* ---- Client-side validation + busy state ---- */
+    function markInvalid(field, invalid) {
+      field.classList.toggle("is-invalid", invalid);
+    }
 
-          if (!!radios) {
-            radios.forEach((radio) => {
-              radio.checked = radio.value === value;
-            });
-          }
+    if (form) {
+      form.addEventListener("submit", function (event) {
+        var ok = true;
+
+        if (!username.value.trim()) {
+          markInvalid(document.getElementById("usernameField"), true);
+          ok = false;
         }
-      }
-    };
-
-    form.addEventListener("change", function (event) {
-      var target = event.target,
-      name = target.name,
-      value = target.value;
-
-      for (var key in themeConfig) {
-        if (name === key) {
-          document.documentElement.setAttribute("data-bs-" + key, value);
-          window.localStorage.setItem("tabler-" + key, value);
-          url.searchParams.set(key, value);
+        if (!password.value) {
+          markInvalid(document.getElementById("passwordField"), true);
+          ok = false;
         }
-      }
 
-      window.history.pushState({}, "", url);
-    });
+        if (!ok) {
+          event.preventDefault();
+          return;
+        }
 
-    resetButton.addEventListener("click", function () {
-      for (var key in themeConfig) {
-        var value = themeConfig[key];
-        document.documentElement.removeAttribute("data-bs-" + key);
-        window.localStorage.removeItem("tabler-" + key);
-        url.searchParams.delete(key);
-      }
+        // Prevent double submits and show that something is happening.
+        submit.disabled = true;
+        submitLabel.textContent = "Signing in";
+        submitIcon.className = "spinner-border spinner-border-sm me-1";
+      });
 
-      checkItems();
-
-      window.history.pushState({}, "", url);
-    });
-
-    checkItems();
+      [username, password].forEach(function (input) {
+        input.addEventListener("input", function () {
+          markInvalid(input.closest(".auth-field"), false);
+        });
+      });
+    }
   });
 </script>
 </body>

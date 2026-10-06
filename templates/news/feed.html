@@ -1,0 +1,251 @@
+{% extends "theme/base.html" %}
+{% block content %}
+<div class="container-xl">
+
+  <!-- PAGE HEADER -->
+  <div class="page-header d-print-none" aria-label="Page header">
+    <div class="container-xl">
+      <div class="row align-items-center">
+        <div class="col">
+          <div class="page-pretitle">Hermes Intelligence Feed</div>
+          <h2 class="page-title mb-0 d-none d-md-block">AI News</h2>
+          <h2 class="page-title mb-0 d-md-none">AI News</h2>
+        </div>
+        <div class="col-auto">
+          <button type="button" class="btn btn-primary" id="refreshBtn">
+            <i class="fas fa-rotate me-1"></i> Refresh feeds
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <br>
+
+  <!-- REFRESH STATUS -->
+  <div id="refreshAlert" class="alert d-none" role="alert">
+    <div class="d-flex">
+      <div><h4 class="alert-heading" id="refreshAlertTitle">Feeds</h4></div>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <div class="alert-description" id="refreshAlertText"></div>
+  </div>
+
+  <!-- SEARCH + SOURCE FILTER -->
+  <form method="GET" class="mb-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-6">
+        <label class="form-label" for="q">Search</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="fas fa-search"></i></span>
+          <input type="text" name="q" id="q" value="{{ query }}" class="form-control"
+                 placeholder="Search headlines and summaries...">
+        </div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label" for="source">Source</label>
+        <select name="source" id="source" class="form-select">
+          <option value="">All sources</option>
+          {% for key, name in source_choices %}
+            <option value="{{ key }}" {% if source == key %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-fill">
+          <i class="fas fa-magnifying-glass me-1"></i> Search
+        </button>
+        {% if query or source %}
+          <a href="{% url 'news:news_list' %}" class="btn btn-outline-secondary">Clear</a>
+        {% endif %}
+      </div>
+    </div>
+  </form>
+
+  <!-- META -->
+  <div class="card mb-3">
+    <div class="card-body py-2">
+      <div class="d-flex align-items-center justify-content-between flex-wrap">
+        <div>
+          <strong>{{ total }}</strong> article{{ total|pluralize }} cached
+          across <strong>{{ feed_count }}</strong> feeds
+        </div>
+        <div class="text-muted">
+          {% if last_updated %}
+            Last updated {{ last_updated|timesince }} ago
+          {% else %}
+            Never refreshed — click "Refresh feeds"
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ARTICLES -->
+  <div class="row row-cards">
+    {% for a in articles %}
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-start gap-3">
+              <div class="flex-fill">
+                <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                  <span class="badge bg-purple-lt text-purple">{{ a.source }}</span>
+                  {% if a.is_saved %}
+                    <span class="badge bg-green-lt text-green">
+                      <i class="fas fa-bookmark me-1"></i> Saved
+                    </span>
+                  {% endif %}
+                  {% if a.published_at %}
+                    <span class="text-muted small">{{ a.published_at|timesince }} ago</span>
+                  {% endif %}
+                </div>
+
+                <h3 class="card-title mb-1">
+                  <a href="{{ a.url }}" target="_blank" rel="noopener noreferrer">{{ a.title }}</a>
+                </h3>
+
+                {% if a.summary %}
+                  <p class="text-muted mb-0">{{ a.summary }}</p>
+                {% endif %}
+              </div>
+
+              <button type="button" class="btn btn-ghost-secondary btn-icon btn-sm save-btn"
+                      data-id="{{ a.id }}" data-saved="{{ a.is_saved|yesno:'1,0' }}"
+                      title="Save for later">
+                <i class="fas fa-bookmark"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body">
+            <div class="empty py-5">
+              <div class="empty-icon"><i class="fas fa-robot fa-2x text-muted"></i></div>
+              <p class="empty-title">No articles yet</p>
+              <p class="empty-subtitle">
+                {% if query or source %}
+                  No results for this filter.
+                {% else %}
+                  Click "Refresh feeds" to pull the latest AI news.
+                {% endif %}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- PAGINATION -->
+  {% if articles.paginator.num_pages > 1 %}
+    <div class="card-footer d-flex align-items-center mt-3">
+      <p class="m-0 text-muted">
+        Showing <span class="fw-medium">{{ articles.start_index }}</span>
+        to <span class="fw-medium">{{ articles.end_index }}</span>
+        of <span class="fw-medium">{{ articles.paginator.count }}</span> articles
+      </p>
+      <ul class="pagination m-0 ms-auto">
+        {% if articles.has_previous %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ articles.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if source %}&source={{ source }}{% endif %}">
+              <i class="fas fa-chevron-left"></i> prev
+            </a>
+          </li>
+        {% endif %}
+        {% for num in articles.paginator.page_range %}
+          <li class="page-item {% if articles.number == num %}active{% endif %}">
+            <a class="page-link" href="?page={{ num }}{% if query %}&q={{ query }}{% endif %}{% if source %}&source={{ source }}{% endif %}">{{ num }}</a>
+          </li>
+        {% endfor %}
+        {% if articles.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ articles.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if source %}&source={{ source }}{% endif %}">
+              next <i class="fas fa-chevron-right"></i>
+            </a>
+          </li>
+        {% endif %}
+      </ul>
+    </div>
+  {% endif %}
+
+</div>
+
+<script>
+(function () {
+    const REFRESH_URL = "{% url 'news:news_refresh' %}";
+    const SAVE_URL_BASE = "/news/save/";
+
+    function getCookie(name) {
+        const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        return match ? decodeURIComponent(match[2]) : null;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    const alertBox = document.getElementById('refreshAlert');
+
+    function showAlert(kind, title, msg) {
+        alertBox.className = 'alert alert-' + kind + ' alert-dismissible fade show';
+        document.getElementById('refreshAlertTitle').textContent = title;
+        document.getElementById('refreshAlertText').textContent = msg;
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', function () {
+        const btn = this;
+        btn.disabled = true;
+        const original = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Fetching...';
+
+        fetch(REFRESH_URL, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrftoken },
+        })
+        .then(async (resp) => {
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.error || 'Refresh failed.');
+            return data;
+        })
+        .then((data) => {
+            const failed = (data.errors && data.errors.length) || 0;
+            if (failed) {
+                showAlert('warning', 'Partial refresh',
+                    data.created + ' new, ' + data.updated + ' existing. ' +
+                    failed + ' feed(s) failed: ' + data.errors.map(e => e.source).join(', '));
+            } else {
+                showAlert('success', 'Feeds updated',
+                    data.created + ' new article(s) added, ' + data.updated + ' already known.');
+            }
+            setTimeout(() => window.location.reload(), 1800);
+        })
+        .catch((err) => {
+            showAlert('danger', 'Refresh failed', err.message);
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = original;
+        });
+    });
+
+    // Save / unsave a single article
+    document.querySelectorAll('.save-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            btn.disabled = true;
+            fetch(SAVE_URL_BASE + btn.dataset.id + '/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrftoken },
+            })
+            .then(r => r.json())
+            .then((data) => {
+                const saved = !!data.is_saved;
+                btn.dataset.saved = saved ? '1' : '0';
+                btn.querySelector('i').classList.toggle('text-yellow', saved);
+            })
+            .catch(() => {})
+            .finally(() => { btn.disabled = false; });
+        });
+    });
+})();
+</script>
+{% endblock %}
