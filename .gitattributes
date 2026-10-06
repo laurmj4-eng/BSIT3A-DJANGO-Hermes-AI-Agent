@@ -1,0 +1,19 @@
+# Normalize line endings for source files
+* text=auto
+
+# SQL dumps must never have their line endings rewritten — data values can
+# contain literal CR/LF sequences that would be corrupted by conversion.
+*.sql -text
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.zip binary
+*.gz binary
