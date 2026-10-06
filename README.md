@@ -135,8 +135,8 @@ mj_django/
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/laurmj4-eng/BSIT-3A-DJANGO-Hermes-AI-Agent.git
-cd BSIT-3A-DJANGO-Hermes-AI-Agent
+git clone https://github.com/laurmj4-eng/BSIT3A-DJANGO-Hermes-AI-Agent.git
+cd BSIT3A-DJANGO-Hermes-AI-Agent
 ```
 
 ### 2. Create a virtual environment
