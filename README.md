@@ -20,6 +20,8 @@ feed. Built with Django 5 and MySQL.
 
 ---
 
+10/7/2026 100 Points
+
 ## About the System
 
 Hermes AI Agent pulls live news from several public RSS/Atom feeds and presents
