@@ -1,0 +1,97 @@
+/* Hermes Agent orbit hero — dark 3D card matching the reference image. */
+.hermes-orbit-card {
+  background: radial-gradient(120% 140% at 50% 0%, #101828 0%, #0a0a0f 45%, #050508 100%);
+  border: 1px solid rgba(103, 232, 249, 0.18);
+  overflow: hidden;
+}
+.hermes-orbit-card .page-pretitle { color: #67e8f9; letter-spacing: 0.18em; }
+.hermes-orbit-title {
+  font-weight: 300;
+  letter-spacing: 0.28em;
+  color: #f2f6fb;
+}
+.hermes-orbit-sub {
+  letter-spacing: 0.42em;
+  font-size: 0.72rem;
+  color: #9fb3c8;
+}
+.hermes-rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent);
+  position: relative;
+}
+.hermes-rule::after {
+  content: "";
+  position: absolute;
+  left: 50%; top: -3px;
+  width: 7px; height: 7px;
+  border: 1px solid rgba(255,255,255,.7);
+  border-radius: 50%;
+  transform: translateX(-50%);
+  background: #0a0a0f;
+}
+#orbit-wrap { position: relative; min-height: 380px; }
+#model-orbit { width: 100%; height: 380px; display: block; }
+#orbit-labels { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.orbit-label {
+  position: absolute;
+  left: 0; top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 7px;
+  background: rgba(8, 15, 26, 0.88);
+  border: 1px solid rgba(103, 232, 249, 0.55);
+  border-radius: 999px;
+  color: #eaf6fb;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+  pointer-events: auto;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  transition: opacity 0.2s ease;
+  will-change: transform;
+}
+.orbit-label:hover { border-color: #fff; color: #fff; }
+.orbit-label .orbit-pip {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  flex: none;
+  box-shadow: 0 0 8px currentColor;
+}
+.orbit-label.is-behind { opacity: 0.42; }
+.orbit-label.is-front { opacity: 1; }
+#orbit-tip {
+  position: absolute;
+  z-index: 5;
+  background: rgba(6, 12, 20, 0.92);
+  border: 1px solid rgba(103, 232, 249, 0.5);
+  color: #e6f6fb;
+  font-size: 0.78rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  pointer-events: none;
+  max-width: 240px;
+}
+.workflow-step .step-num {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  background: rgba(103, 232, 249, 0.14);
+  border: 1px solid rgba(103, 232, 249, 0.45);
+  color: #a5f3fc;
+}
+.model-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.model-card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px -14px rgba(0,0,0,.5); }
+.model-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+@media (max-width: 991px) {
+  #orbit-wrap { min-height: 300px; }
+  #model-orbit { height: 300px; }
+  .hermes-orbit-title { letter-spacing: 0.16em; }
+}

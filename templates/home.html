@@ -1,4 +1,5 @@
 {% extends "theme/base.html" %}
+{% load static %}
 {% block content %}
 <div class="container-xl">
 
@@ -20,6 +21,106 @@
     </div>
   </div>
   <br>
+
+  <!-- HERMES AGENT 3D HERO : sphere + workflow, like the reference image -->
+  <div class="card hermes-orbit-card mb-3">
+    <div class="card-body">
+      <div class="text-center mb-1">
+        <div class="page-pretitle">Hermes Intelligence Feed</div>
+      </div>
+      <div class="hermes-rule mb-2"></div>
+      <h2 class="text-center hermes-orbit-title mb-1">HERMES AGENT</h2>
+      <div class="hermes-rule mt-2 mb-3"></div>
+      <div class="row align-items-center">
+        <div class="col-lg-5">
+          <div class="text-uppercase hermes-orbit-sub mb-2">Decoding persistent memory</div>
+          <p class="text-muted mb-3">
+            One feed for every major AI model. Follow the orbit —
+            click <strong class="text-white">Claude</strong>,
+            <strong class="text-white">Gemini</strong>, <strong class="text-white">GPT</strong>
+            or any node to jump straight to its news.
+          </p>
+          <!-- 3-step workflow: Aggregate -> Understand -> Act -->
+          <div class="d-flex flex-column gap-2 mb-3">
+            <div class="d-flex gap-2 align-items-start workflow-step">
+              <span class="step-num">1</span>
+              <div>
+                <div class="fw-medium text-white"><i class="fas fa-rss me-1"></i>Aggregate</div>
+                <div class="text-muted small">5 feeds refresh into one de-duplicated feed.</div>
+              </div>
+            </div>
+            <div class="d-flex gap-2 align-items-start workflow-step">
+              <span class="step-num">2</span>
+              <div>
+                <div class="fw-medium text-white"><i class="fas fa-filter me-1"></i>Understand</div>
+                <div class="text-muted small">Search headlines, filter by source or model.</div>
+              </div>
+            </div>
+            <div class="d-flex gap-2 align-items-start workflow-step">
+              <span class="step-num">3</span>
+              <div>
+                <div class="fw-medium text-white"><i class="fas fa-bookmark me-1"></i>Act</div>
+                <div class="text-muted small">Bookmark stories and track them on this dashboard.</div>
+              </div>
+            </div>
+          </div>
+          <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'news:news_list' %}" class="btn btn-primary">
+              <i class="fas fa-robot me-1"></i> Open AI News
+            </a>
+            <a href="#model-coverage" class="btn btn-ghost-secondary">
+              <i class="fas fa-circle-nodes me-1"></i> Explore models
+            </a>
+            <button type="button" id="orbit-motion" class="btn btn-ghost-secondary">
+              <i class="fas fa-pause me-1"></i> Pause motion
+            </button>
+          </div>
+        </div>
+        <div class="col-lg-7">
+          <div id="orbit-wrap">
+            <canvas id="model-orbit" aria-label="3D orbit of AI models"></canvas>
+            <div id="orbit-labels"></div>
+            <div id="orbit-tip" class="d-none"></div>
+            <div id="orbit-fallback" class="d-none text-center py-4">
+              <p class="text-muted small mb-2">3D unavailable — pick a model:</p>
+              <div class="d-flex gap-2 justify-content-center flex-wrap">
+                {% for m in model_stats %}
+                  <a href="{% url 'news:news_list' %}?q={{ m.query }}" class="btn btn-sm btn-outline-secondary">
+                    <span class="model-dot me-1" style="background: {{ m.color }}"></span>{{ m.label }}
+                  </a>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODEL COVERAGE CARDS -->
+  <div id="model-coverage" class="row row-deck row-cards mb-3">
+    {% for m in model_stats %}
+      <div class="col-sm-6 col-lg-4 col-xl-2">
+        <div class="card model-card">
+          <div class="card-body">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <span class="model-dot" style="background: {{ m.color }}"></span>
+              <span class="fw-medium">{{ m.label }}</span>
+            </div>
+            <div class="h2 mb-1">{{ m.total }}</div>
+            <div class="text-muted small mb-2">{{ m.desc }}</div>
+            <a href="{% url 'news:news_list' %}?q={{ m.query }}" class="btn btn-sm btn-ghost-secondary w-100">
+              View news <i class="fas fa-arrow-right ms-1"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="col-12">
+        <p class="text-muted mb-0">No model data yet.</p>
+      </div>
+    {% endfor %}
+  </div>
 
   <!-- STAT CARDS -->
   <div class="row row-deck row-cards mb-3">
@@ -154,4 +255,14 @@
   </div>
 
 </div>
+{% endblock %}
+{% block extra_js %}
+{{ model_stats|json_script:"hermes-models" }}
+<link href="{% static 'css/model-orbit.css' %}?v=4" rel="stylesheet"/>
+<script>
+  try {
+    window.HERMES_MODELS = JSON.parse(document.getElementById('hermes-models').textContent);
+  } catch (e) { window.HERMES_MODELS = []; }
+</script>
+<script src="{% static 'js/model-orbit.js' %}?v=4"></script>
 {% endblock %}

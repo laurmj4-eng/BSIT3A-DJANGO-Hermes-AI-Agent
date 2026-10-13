@@ -169,7 +169,7 @@ def logout_view(request):
 def home(request):
     """Dashboard: headline AI-news stats plus the newest articles."""
     from django.contrib.auth.models import User
-    from django.db.models import Count
+    from django.db.models import Count, Q
     from apps.info.models import Info
     from apps.news.feeds import FEEDS
     from apps.news.models import Article
@@ -187,6 +187,61 @@ def home(request):
         .order_by('-total')[:6]
     )
 
+    # Per-model coverage for the 3D orbit hero + model cards. Each model
+    # counts articles mentioning any of its keywords in title or summary.
+    MODEL_DEFS = [
+        {
+            'key': 'claude', 'label': 'Claude',
+            'query': 'claude', 'color': '#D97757',
+            'desc': 'Anthropic reasoning models',
+            'keywords': ['claude', 'anthropic'],
+        },
+        {
+            'key': 'gemini', 'label': 'Gemini',
+            'query': 'gemini', 'color': '#4285F4',
+            'desc': 'Google multimodal models',
+            'keywords': ['gemini', 'deepmind', 'bard'],
+        },
+        {
+            'key': 'gpt', 'label': 'GPT / OpenAI',
+            'query': 'openai', 'color': '#10A37F',
+            'desc': 'OpenAI chat + reasoning',
+            'keywords': ['gpt', 'openai', 'chatgpt'],
+        },
+        {
+            'key': 'llama', 'label': 'Llama / Meta',
+            'query': 'llama', 'color': '#0668E1',
+            'desc': 'Meta open-weight models',
+            'keywords': ['llama', 'meta ai', 'mistral-muse'],
+        },
+        {
+            'key': 'mistral', 'label': 'Mistral',
+            'query': 'mistral', 'color': '#FF7000',
+            'desc': 'Mistral open models',
+            'keywords': ['mistral', 'mixtral'],
+        },
+        {
+            'key': 'deepseek', 'label': 'DeepSeek',
+            'query': 'deepseek', 'color': '#67E8F9',
+            'desc': 'DeepSeek + emerging labs',
+            'keywords': ['deepseek', 'qwen', 'grok'],
+        },
+    ]
+
+    model_stats = []
+    for m in MODEL_DEFS:
+        q = Q()
+        for kw in m['keywords']:
+            q |= Q(title__icontains=kw) | Q(summary__icontains=kw)
+        model_stats.append({
+            'key': m['key'],
+            'label': m['label'],
+            'query': m['query'],
+            'color': m['color'],
+            'desc': m['desc'],
+            'total': articles.filter(q).count(),
+        })
+
     return render(request, 'home.html', {
         'total_articles': articles.count(),
         'saved_articles': articles.filter(is_saved=True).count(),
@@ -196,6 +251,7 @@ def home(request):
         'latest_articles': latest,
         'latest_sources': by_source,
         'last_updated': last_updated,
+        'model_stats': model_stats,
     })
 
 
