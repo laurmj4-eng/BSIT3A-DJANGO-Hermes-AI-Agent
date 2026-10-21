@@ -1,5 +1,8 @@
 {% extends "theme/base.html" %}
 {% load static %}
+{% block extra_css %}
+<link href="{% static 'css/cosmic-hero.css' %}?v=5" rel="stylesheet"/>
+{% endblock %}
 {% block content %}
 <div class="container-xl">
 
@@ -22,77 +25,125 @@
   </div>
   <br>
 
-  <!-- HERMES AGENT 3D HERO : sphere + workflow, like the reference image -->
+  <!-- HERMES AGENT COSMIC HERO : live procedural galaxy + model orbit -->
   <div class="card hermes-orbit-card mb-3">
-    <div class="card-body">
-      <div class="text-center mb-1">
-        <div class="page-pretitle">Hermes Intelligence Feed</div>
+    <div class="hermes-cosmos" id="cosmos-hero">
+      <canvas id="cosmos-canvas" aria-hidden="true"></canvas>
+      <div class="cosmos-atmosphere" aria-hidden="true"></div>
+      <div class="cosmos-grain" aria-hidden="true"></div>
+
+      <div class="cosmos-live" id="cosmos-live" aria-live="polite">
+        <span class="cosmos-live-dot"></span>
+        <span id="cosmos-live-state">LIVE COSMIC FEED</span>
       </div>
-      <div class="hermes-rule mb-2"></div>
-      <h2 class="text-center hermes-orbit-title mb-1">HERMES AGENT</h2>
-      <div class="hermes-rule mt-2 mb-3"></div>
-      <div class="row align-items-center">
-        <div class="col-lg-5">
-          <div class="text-uppercase hermes-orbit-sub mb-2">Decoding persistent memory</div>
-          <p class="text-muted mb-3">
-            One feed for every major AI model. Follow the orbit —
-            click <strong class="text-white">Claude</strong>,
-            <strong class="text-white">Gemini</strong>, <strong class="text-white">GPT</strong>
-            or any node to jump straight to its news.
-          </p>
-          <!-- 3-step workflow: Aggregate -> Understand -> Act -->
-          <div class="d-flex flex-column gap-2 mb-3">
-            <div class="d-flex gap-2 align-items-start workflow-step">
-              <span class="step-num">1</span>
-              <div>
-                <div class="fw-medium text-white"><i class="fas fa-rss me-1"></i>Aggregate</div>
-                <div class="text-muted small">5 feeds refresh into one de-duplicated feed.</div>
+
+      <div class="card-body cosmos-content">
+        <div class="cosmos-head text-center">
+          <div class="page-pretitle">Hermes Intelligence Feed</div>
+          <div class="hermes-rule mb-2"></div>
+          <h2 class="hermes-orbit-title mb-1">HERMES AGENT</h2>
+          <div class="hermes-rule mt-2 mb-3"></div>
+        </div>
+
+        <div class="row align-items-center g-0">
+          <div class="col-lg-5 cosmos-copy">
+            <div class="text-uppercase hermes-orbit-sub mb-2">Decoding persistent memory</div>
+            <p class="text-muted mb-3">
+              One feed for every major AI model. Drag the galaxy to orbit,
+              scroll or pinch to zoom, then click
+              <strong class="text-white">Claude</strong>,
+              <strong class="text-white">Gemini</strong>, <strong class="text-white">GPT</strong>
+              or any model star to jump straight to its news.
+            </p>
+            <!-- 3-step workflow: Aggregate -> Understand -> Act -->
+            <div class="d-flex flex-column gap-2 mb-3">
+              <div class="d-flex gap-2 align-items-start workflow-step">
+                <span class="step-num">1</span>
+                <div>
+                  <div class="fw-medium text-white"><i class="fas fa-rss me-1"></i>Aggregate</div>
+                  <div class="text-muted small">5 feeds refresh into one de-duplicated feed.</div>
+                </div>
+              </div>
+              <div class="d-flex gap-2 align-items-start workflow-step">
+                <span class="step-num">2</span>
+                <div>
+                  <div class="fw-medium text-white"><i class="fas fa-filter me-1"></i>Understand</div>
+                  <div class="text-muted small">Search headlines, filter by source or model.</div>
+                </div>
+              </div>
+              <div class="d-flex gap-2 align-items-start workflow-step">
+                <span class="step-num">3</span>
+                <div>
+                  <div class="fw-medium text-white"><i class="fas fa-bookmark me-1"></i>Act</div>
+                  <div class="text-muted small">Bookmark stories and track them on this dashboard.</div>
+                </div>
               </div>
             </div>
-            <div class="d-flex gap-2 align-items-start workflow-step">
-              <span class="step-num">2</span>
-              <div>
-                <div class="fw-medium text-white"><i class="fas fa-filter me-1"></i>Understand</div>
-                <div class="text-muted small">Search headlines, filter by source or model.</div>
-              </div>
+            <div class="d-flex gap-2 flex-wrap">
+              <a href="{% url 'news:news_list' %}" class="btn btn-primary">
+                <i class="fas fa-robot me-1"></i> Open AI News
+              </a>
+              <a href="#model-coverage" class="btn btn-ghost-secondary">
+                <i class="fas fa-circle-nodes me-1"></i> Explore models
+              </a>
+              <button type="button" id="orbit-motion" class="btn btn-ghost-secondary">
+                <i class="fas fa-pause me-1"></i> Pause motion
+              </button>
             </div>
-            <div class="d-flex gap-2 align-items-start workflow-step">
-              <span class="step-num">3</span>
-              <div>
-                <div class="fw-medium text-white"><i class="fas fa-bookmark me-1"></i>Act</div>
-                <div class="text-muted small">Bookmark stories and track them on this dashboard.</div>
+
+            <div class="d-flex gap-2 flex-wrap align-items-center mt-2">
+              <div class="cosmos-toolbar" role="group" aria-label="Galaxy view">
+                <button type="button" id="orbit-zoom-out" class="cosmos-tool"
+                        aria-label="Zoom out" title="Zoom out">
+                  <i class="fas fa-minus"></i>
+                </button>
+                <button type="button" id="orbit-reset" class="cosmos-tool"
+                        aria-label="Reset galaxy view" title="Reset view">
+                  <i class="fas fa-crosshairs"></i>
+                </button>
+                <button type="button" id="orbit-zoom-in" class="cosmos-tool"
+                        aria-label="Zoom in" title="Zoom in">
+                  <i class="fas fa-plus"></i>
+                </button>
+                <span class="cosmos-tool-sep" aria-hidden="true"></span>
+                <button type="button" id="orbit-fullscreen" class="cosmos-tool"
+                        aria-label="Full screen" title="Full screen">
+                  <i class="fas fa-expand"></i>
+                </button>
               </div>
+              <label class="cosmos-speed" for="orbit-speed">
+                <span>Orbit speed</span>
+                <input id="orbit-speed" type="range" min="0" max="2.4" step="0.1"
+                       value="1" aria-label="Orbit speed">
+              </label>
             </div>
           </div>
-          <div class="d-flex gap-2 flex-wrap">
-            <a href="{% url 'news:news_list' %}" class="btn btn-primary">
-              <i class="fas fa-robot me-1"></i> Open AI News
-            </a>
-            <a href="#model-coverage" class="btn btn-ghost-secondary">
-              <i class="fas fa-circle-nodes me-1"></i> Explore models
-            </a>
-            <button type="button" id="orbit-motion" class="btn btn-ghost-secondary">
-              <i class="fas fa-pause me-1"></i> Pause motion
-            </button>
+
+          <div class="col-lg-7 cosmos-visual">
+            <div id="orbit-wrap" tabindex="0"
+                 aria-label="Live AI model galaxy. Drag to orbit, scroll or pinch to zoom.">
+              <div id="orbit-labels"></div>
+              <div id="orbit-tip" class="d-none"></div>
+              <div class="cosmos-hint" id="cosmos-hint" aria-hidden="true">
+                <i class="fas fa-hand-pointer me-1"></i>Drag to orbit · Scroll or pinch to zoom
+              </div>
+              <div id="orbit-fallback" class="d-none text-center py-4">
+                <p class="text-muted small mb-2">Interactive 3D unavailable — pick a model:</p>
+                <div class="d-flex gap-2 justify-content-center flex-wrap">
+                  {% for m in model_stats %}
+                    <a href="{% url 'news:news_list' %}?q={{ m.query }}" class="btn btn-sm btn-outline-secondary">
+                      <span class="model-dot me-1" style="background: {{ m.color }}"></span>{{ m.label }}
+                    </a>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="col-lg-7">
-          <div id="orbit-wrap">
-            <canvas id="model-orbit" aria-label="3D orbit of AI models"></canvas>
-            <div id="orbit-labels"></div>
-            <div id="orbit-tip" class="d-none"></div>
-            <div id="orbit-fallback" class="d-none text-center py-4">
-              <p class="text-muted small mb-2">3D unavailable — pick a model:</p>
-              <div class="d-flex gap-2 justify-content-center flex-wrap">
-                {% for m in model_stats %}
-                  <a href="{% url 'news:news_list' %}?q={{ m.query }}" class="btn btn-sm btn-outline-secondary">
-                    <span class="model-dot me-1" style="background: {{ m.color }}"></span>{{ m.label }}
-                  </a>
-                {% endfor %}
-              </div>
-            </div>
-          </div>
-        </div>
+      </div>
+
+      <div class="cosmos-coords" aria-hidden="true">
+        RA 00h 42m 44s &nbsp;·&nbsp; DEC +41° 16′ 09″ &nbsp;·&nbsp; HERMES DEEP FIELD
       </div>
     </div>
   </div>
@@ -258,11 +309,10 @@
 {% endblock %}
 {% block extra_js %}
 {{ model_stats|json_script:"hermes-models" }}
-<link href="{% static 'css/model-orbit.css' %}?v=4" rel="stylesheet"/>
 <script>
   try {
     window.HERMES_MODELS = JSON.parse(document.getElementById('hermes-models').textContent);
   } catch (e) { window.HERMES_MODELS = []; }
 </script>
-<script src="{% static 'js/model-orbit.js' %}?v=4"></script>
+<script src="{% static 'js/cosmic-hero.js' %}?v=5"></script>
 {% endblock %}

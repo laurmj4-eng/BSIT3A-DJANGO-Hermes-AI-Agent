@@ -1,0 +1,597 @@
+/* ==========================================================================
+   Hermes cosmic hero
+   A full-bleed, live procedural galaxy rendered by cosmic-hero.js.
+   ========================================================================== */
+
+.hermes-orbit-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  border-radius: var(--tblr-border-radius-lg, 14px);
+  background: #02040a;
+  box-shadow:
+    0 38px 90px -44px rgba(0, 0, 0, 0.95),
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+}
+
+.hermes-cosmos {
+  position: relative;
+  min-height: 560px;
+  background:
+    radial-gradient(90% 120% at 78% 48%, rgba(20, 44, 82, 0.28) 0%, rgba(2, 4, 10, 0) 62%),
+    #02040a;
+}
+
+#cosmos-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.cosmos-atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(64% 92% at 16% 45%, rgba(2, 4, 10, 0.97) 0%, rgba(2, 4, 10, 0.84) 38%, rgba(2, 4, 10, 0.32) 68%, rgba(2, 4, 10, 0) 84%),
+    linear-gradient(90deg, rgba(2, 4, 10, 0.94) 0%, rgba(2, 4, 10, 0.62) 30%, rgba(2, 4, 10, 0.06) 58%, rgba(2, 4, 10, 0) 76%),
+    linear-gradient(180deg, rgba(2, 4, 10, 0.56) 0%, rgba(2, 4, 10, 0) 18%, rgba(2, 4, 10, 0) 82%, rgba(2, 4, 10, 0.58) 100%);
+}
+
+.cosmos-grain {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.055;
+  mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.92' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
+}
+
+.cosmos-content {
+  position: relative;
+  z-index: 3;
+  padding: 1.6rem 1.75rem 2.15rem;
+}
+
+.cosmos-head {
+  position: relative;
+  z-index: 5;
+}
+
+.hermes-orbit-card .page-pretitle {
+  color: #7dd3fc;
+  letter-spacing: 0.2em;
+  text-shadow: 0 0 22px rgba(56, 189, 248, 0.42);
+}
+
+.hermes-orbit-title {
+  font-weight: 300;
+  letter-spacing: 0.3em;
+  color: #f5f9ff;
+  text-shadow:
+    0 0 30px rgba(148, 197, 255, 0.28),
+    0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.hermes-orbit-sub {
+  letter-spacing: 0.38em;
+  font-size: 0.72rem;
+  color: #a9bfd8;
+}
+
+.hermes-rule {
+  position: relative;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(226, 242, 255, 0.6), transparent);
+}
+
+.hermes-rule::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  width: 7px;
+  height: 7px;
+  border: 1px solid rgba(226, 242, 255, 0.85);
+  border-radius: 50%;
+  transform: translateX(-50%);
+  background: #07101e;
+  box-shadow: 0 0 12px rgba(125, 211, 252, 0.8);
+}
+
+.cosmos-copy {
+  position: relative;
+  z-index: 5;
+  padding-right: 1.25rem;
+}
+
+.cosmos-copy p {
+  max-width: 31rem;
+  color: #a9b7cc;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.7);
+}
+
+.cosmos-copy .btn-ghost-secondary {
+  border-color: rgba(148, 190, 235, 0.2);
+  background: rgba(5, 12, 26, 0.38);
+  color: #d6e5f7;
+  backdrop-filter: blur(8px);
+}
+
+.cosmos-copy .btn-ghost-secondary:hover {
+  border-color: rgba(125, 211, 252, 0.55);
+  background: rgba(12, 24, 46, 0.7);
+  color: #ffffff;
+}
+
+.cosmos-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  border-radius: 9px;
+  background: rgba(5, 12, 26, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 22px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(10px);
+}
+
+.cosmos-tool {
+  display: inline-grid;
+  place-items: center;
+  width: 31px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #bdd5ee;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease;
+}
+
+.cosmos-tool:hover,
+.cosmos-tool:focus-visible {
+  color: #ffffff;
+  background: rgba(125, 211, 252, 0.14);
+  outline: none;
+}
+
+.cosmos-tool:focus-visible {
+  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.7);
+}
+
+.cosmos-tool-sep {
+  width: 1px;
+  height: 17px;
+  margin: 0 3px;
+  background: rgba(125, 211, 252, 0.2);
+}
+
+.cosmos-speed {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
+  padding: 0 11px;
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  border-radius: 9px;
+  background: rgba(5, 12, 26, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 22px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(10px);
+}
+
+.cosmos-speed span {
+  color: #8eabc8;
+  font-size: 0.56rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.cosmos-speed input {
+  width: 84px;
+  height: 18px;
+  margin: 0;
+  accent-color: #38bdf8;
+  cursor: pointer;
+}
+
+.cosmos-hint {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  bottom: 9px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.33rem 0.62rem;
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  border-radius: 999px;
+  background: rgba(4, 10, 22, 0.52);
+  color: rgba(190, 214, 237, 0.78);
+  font-size: 0.58rem;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+  transform: translateX(-50%);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.cosmos-hint.is-hidden {
+  opacity: 0;
+  transform: translate(-50%, 6px);
+}
+
+.workflow-step .step-num {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #a5f3fc;
+  background: rgba(34, 211, 238, 0.1);
+  border: 1px solid rgba(103, 232, 249, 0.42);
+  box-shadow:
+    0 0 18px -6px rgba(34, 211, 238, 0.75),
+    inset 0 0 12px rgba(34, 211, 238, 0.08);
+}
+
+.cosmos-visual {
+  position: relative;
+  z-index: 4;
+}
+
+#orbit-wrap {
+  position: relative;
+  height: 430px;
+  cursor: grab;
+  touch-action: none;
+  outline: none;
+}
+
+#orbit-wrap.is-dragging {
+  cursor: grabbing;
+}
+
+#orbit-wrap:focus-visible {
+  outline: 1px solid rgba(125, 211, 252, 0.5);
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+.hermes-cosmos.is-interacting,
+.hermes-cosmos.is-interacting * {
+  user-select: none;
+}
+
+#orbit-labels {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   LIVE badge
+   -------------------------------------------------------------------------- */
+
+.cosmos-live {
+  position: absolute;
+  z-index: 6;
+  top: 1.15rem;
+  right: 1.35rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.34rem 0.72rem;
+  border: 1px solid rgba(94, 234, 212, 0.3);
+  border-radius: 999px;
+  background: rgba(3, 9, 20, 0.58);
+  color: #c4f5ef;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.19em;
+  line-height: 1;
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 24px -10px rgba(45, 212, 191, 0.65);
+  transition: color 0.25s ease, border-color 0.25s ease;
+}
+
+.cosmos-live-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: #5eead4;
+  box-shadow: 0 0 10px #5eead4, 0 0 20px rgba(94, 234, 212, 0.5);
+  animation: cosmosPulse 2.2s ease-in-out infinite;
+}
+
+.hermes-cosmos.is-paused .cosmos-live {
+  color: #f7d9a5;
+  border-color: rgba(251, 191, 36, 0.34);
+  box-shadow: none;
+}
+
+.hermes-cosmos.is-paused .cosmos-live-dot {
+  background: #fbbf24;
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.75);
+  animation: none;
+}
+
+@keyframes cosmosPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.72); }
+}
+
+.cosmos-coords {
+  position: absolute;
+  z-index: 4;
+  left: 1.75rem;
+  bottom: 0.72rem;
+  color: rgba(148, 180, 214, 0.42);
+  font-size: 0.56rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   Interactive model labels
+   -------------------------------------------------------------------------- */
+
+.orbit-label {
+  --orbit-color: #67e8f9;
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border: 1px solid var(--orbit-color);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(14, 25, 44, 0.92), rgba(4, 9, 20, 0.86));
+  color: #edf7ff;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  pointer-events: auto;
+  opacity: 0;
+  backdrop-filter: blur(10px) saturate(140%);
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.55),
+    0 0 20px -9px var(--orbit-color),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  transition: opacity 0.22s ease, background 0.2s ease, box-shadow 0.2s ease;
+  will-change: transform;
+  transform-origin: center center;
+}
+
+.orbit-label:hover,
+.orbit-label:focus-visible {
+  color: #ffffff;
+  background:
+    linear-gradient(180deg, rgba(26, 43, 68, 0.96), rgba(7, 14, 28, 0.92));
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.62),
+    0 0 28px -6px var(--orbit-color),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  outline: none;
+}
+
+.orbit-label .orbit-pip {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--orbit-color);
+  box-shadow: 0 0 8px var(--orbit-color);
+}
+
+.orbit-label.is-front { opacity: 1; }
+.orbit-label.is-behind { opacity: 0.38; }
+
+#orbit-tip {
+  position: absolute;
+  z-index: 8;
+  padding: 0.32rem 0.62rem;
+  border: 1px solid rgba(103, 232, 249, 0.42);
+  border-radius: 7px;
+  background: rgba(4, 10, 20, 0.94);
+  color: #e6f6fb;
+  font-size: 0.74rem;
+  line-height: 1.35;
+  max-width: 250px;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+#orbit-fallback {
+  position: relative;
+  z-index: 5;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+/* --------------------------------------------------------------------------
+   WebGL fallback scene
+   -------------------------------------------------------------------------- */
+
+.hermes-cosmos.is-no-webgl #cosmos-canvas { display: none; }
+
+.hermes-cosmos.is-no-webgl .cosmos-toolbar,
+.hermes-cosmos.is-no-webgl .cosmos-speed,
+.hermes-cosmos.is-no-webgl .cosmos-hint {
+  display: none;
+}
+
+.hermes-cosmos.is-no-webgl #orbit-wrap {
+  cursor: default;
+  touch-action: auto;
+}
+
+.hermes-cosmos.is-no-webgl::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 50%;
+  left: 72%;
+  width: min(86%, 820px);
+  aspect-ratio: 1.75;
+  transform: translate(-50%, -50%) rotate(-17deg);
+  border-radius: 50%;
+  opacity: 0.88;
+  filter: blur(16px);
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(255, 242, 214, 0.98) 0%, rgba(255, 198, 122, 0.78) 6%, rgba(255, 158, 82, 0.35) 14%, rgba(255, 146, 74, 0.1) 26%, transparent 42%),
+    radial-gradient(ellipse at 42% 56%, rgba(121, 175, 255, 0.42) 0%, rgba(67, 111, 218, 0.18) 32%, transparent 58%),
+    radial-gradient(ellipse at 62% 44%, rgba(172, 210, 255, 0.34) 0%, rgba(73, 124, 226, 0.14) 30%, transparent 56%),
+    conic-gradient(from 160deg at 50% 50%, transparent 0deg, rgba(95, 158, 255, 0.26) 48deg, transparent 110deg, rgba(188, 218, 255, 0.2) 188deg, transparent 250deg, rgba(70, 126, 230, 0.24) 310deg, transparent 360deg);
+  animation: fallbackGalaxy 90s linear infinite;
+}
+
+.hermes-cosmos.is-no-webgl .cosmos-atmosphere {
+  background:
+    radial-gradient(70% 95% at 16% 46%, rgba(2, 4, 10, 0.97) 0%, rgba(2, 4, 10, 0.86) 38%, rgba(2, 4, 10, 0.36) 68%, rgba(2, 4, 10, 0) 84%),
+    linear-gradient(90deg, rgba(2, 4, 10, 0.94) 0%, rgba(2, 4, 10, 0.6) 32%, rgba(2, 4, 10, 0.08) 60%, rgba(2, 4, 10, 0) 78%);
+}
+
+@keyframes fallbackGalaxy {
+  from { transform: translate(-50%, -50%) rotate(-17deg); }
+  to { transform: translate(-50%, -50%) rotate(343deg); }
+}
+
+.hermes-orbit-card:fullscreen,
+.hermes-orbit-card:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: #02040a;
+  overflow: auto;
+}
+
+.hermes-orbit-card:fullscreen .hermes-cosmos,
+.hermes-orbit-card:-webkit-full-screen .hermes-cosmos {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.hermes-orbit-card:fullscreen .cosmos-content,
+.hermes-orbit-card:-webkit-full-screen .cosmos-content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.hermes-orbit-card:fullscreen #orbit-wrap,
+.hermes-orbit-card:-webkit-full-screen #orbit-wrap {
+  height: 58vh;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1199.98px) {
+  #orbit-wrap { height: 400px; }
+}
+
+@media (max-width: 991.98px) {
+  .hermes-cosmos { min-height: 0; }
+
+  .cosmos-atmosphere {
+    background:
+      linear-gradient(180deg, rgba(2, 4, 10, 0.95) 0%, rgba(2, 4, 10, 0.76) 34%, rgba(2, 4, 10, 0.14) 62%, rgba(2, 4, 10, 0.48) 100%),
+      radial-gradient(90% 55% at 50% 72%, rgba(2, 4, 10, 0) 0%, rgba(2, 4, 10, 0.18) 58%, rgba(2, 4, 10, 0.55) 100%);
+  }
+
+  .cosmos-content { padding: 1.35rem 1.2rem 2rem; }
+  .cosmos-copy { padding-right: 0; }
+  .cosmos-copy p { max-width: none; }
+  #orbit-wrap { height: 345px; margin-top: 0.35rem; }
+  .hermes-orbit-title { letter-spacing: 0.18em; }
+
+  .hermes-cosmos.is-no-webgl::before {
+    top: 76%;
+    left: 50%;
+    width: 108%;
+  }
+
+  .cosmos-coords { display: none; }
+}
+
+@media (max-width: 575.98px) {
+  .cosmos-live {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: max-content;
+    margin: 0.9rem auto 0;
+    font-size: 0.56rem;
+  }
+
+  .cosmos-content { padding-top: 1rem; }
+  .orbit-label { font-size: 10.5px; padding: 3px 8px 3px 7px; }
+  #orbit-wrap { height: 300px; }
+
+  .cosmos-speed {
+    padding: 0 8px;
+  }
+
+  .cosmos-speed span {
+    display: none;
+  }
+
+  .cosmos-speed input {
+    width: 76px;
+  }
+
+  .cosmos-hint {
+    bottom: 6px;
+    padding: 0.28rem 0.5rem;
+    font-size: 0.52rem;
+    letter-spacing: 0.04em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cosmos-live-dot,
+  .hermes-cosmos.is-no-webgl::before {
+    animation: none;
+  }
+  .orbit-label { transition: none; }
+}
