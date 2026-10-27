@@ -1,4 +1,4 @@
-const CACHE = 'hermes-static-v7';
+const CACHE = 'hermes-static-v9';
 
 const CORE_URLS = [
   '/',

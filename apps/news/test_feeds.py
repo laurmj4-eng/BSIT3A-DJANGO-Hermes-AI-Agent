@@ -162,6 +162,44 @@ class FetchFeedTests(SimpleTestCase):
             articles = fetch_feed(spec)
         self.assertEqual(articles[0]["title"], "OpenAI ships new model - The Verge")
 
+    def test_stripped_title_still_detects_echoed_summary(self):
+        body = b"""<?xml version="1.0"?>
+        <rss version="2.0"><channel>
+          <item>
+            <title>Is AI esoteric? - IFLScience</title>
+            <link>https://example.com/story-5</link>
+            <description>Is AI esoteric? IFLScience</description>
+          </item>
+        </channel></rss>"""
+        spec = {
+            "key": "google_test",
+            "name": "Google News - Test",
+            "url": "https://news.google.com/rss/search?q=test",
+            "strip_title_suffix": True,
+        }
+        with patch("apps.news.feeds.urlopen", _fake_urlopen(body)):
+            articles = fetch_feed(spec)
+        self.assertEqual(articles[0]["title"], "Is AI esoteric?")
+        self.assertEqual(articles[0]["summary"], "")
+
+    def test_applies_title_prefix_for_release_feeds(self):
+        body = b"""<?xml version="1.0"?>
+        <rss version="2.0"><channel>
+          <item>
+            <title>v2.2.0</title>
+            <link>https://example.com/release</link>
+          </item>
+        </channel></rss>"""
+        spec = {
+            "key": "release_test",
+            "name": "Release Test",
+            "url": "https://example.com/releases.atom",
+            "title_prefix": "OpenCode ",
+        }
+        with patch("apps.news.feeds.urlopen", _fake_urlopen(body)):
+            articles = fetch_feed(spec)
+        self.assertEqual(articles[0]["title"], "OpenCode v2.2.0")
+
     def test_network_error_raises_feed_error(self):
         def _boom(req, timeout=None):
             raise URLError("down")

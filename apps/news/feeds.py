@@ -87,6 +87,53 @@ FEEDS = [
         "name": "Hugging Face",
         "url": "https://huggingface.co/blog/feed.xml",
     },
+    # Tools, releases and free/local model coverage (verified 2026-10-27).
+    {
+        "key": "simonwillison",
+        "name": "Simon Willison",
+        "url": "https://simonwillison.net/atom/everything/",
+    },
+    {
+        "key": "hackernews_show",
+        "name": "Show HN — AI",
+        "url": "https://hnrss.org/show?q=AI",
+    },
+    {
+        "key": "reddit_localllama",
+        "name": "r/LocalLLaMA",
+        "url": "https://www.reddit.com/r/LocalLLaMA/.rss",
+    },
+    {
+        "key": "ollama_blog",
+        "name": "Ollama Blog",
+        "url": "https://ollama.com/blog/rss.xml",
+    },
+    {
+        "key": "verge_ai",
+        "name": "The Verge — AI",
+        "url": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
+    },
+    {
+        "key": "freebuff_blog",
+        "name": "Freebuff Blog",
+        "url": "https://freebuff.com/blog/rss.xml",
+    },
+    {
+        "key": "opencode_releases",
+        "name": "OpenCode Releases",
+        "url": "https://github.com/sst/opencode/releases.atom",
+        "title_prefix": "OpenCode ",
+    },
+    {
+        "key": "google_free_models",
+        "name": "Google News — Free Models",
+        "url": (
+            "https://news.google.com/rss/search?q=%28%22free+AI+model%22+OR+%22free+tier%22"
+            "+OR+%22open+weights%22+OR+%22open-weight%22%29+when%3A14d"
+            "&hl=en-US&gl=US&ceid=US%3Aen"
+        ),
+        "strip_title_suffix": True,
+    },
     {
         "key": "google_ai",
         "name": "Google News — AI",
@@ -309,11 +356,14 @@ def fetch_feed(spec: dict) -> list[dict]:
     articles = []
     for entry in entries:
         title = _clean(_first(entry, "title", "atom:title"), limit=300)
+        raw_title = title
         if spec.get("strip_title_suffix") and title:
             # Google News appends " - Publisher". Drop that tail only.
             head, sep, tail = title.rpartition(" - ")
             if sep and 0 < len(tail) <= 40:
                 title = head.strip()
+        if spec.get("title_prefix") and title:
+            title = spec["title_prefix"] + title
         link = _atom_link(entry) or _first(entry, "link")
         if not title or not link:
             continue
@@ -334,7 +384,11 @@ def fetch_feed(spec: dict) -> list[dict]:
         # Google News repeats the headline in <description>, which makes the
         # card read twice. Feeds append the publisher name after the headline
         # and strip the separator, so normalise both sides before comparing.
-        if summary and _is_echo_of(title, summary):
+        # Compare the pre-strip title too, so its publisher tail still matches.
+        if summary and (
+            _is_echo_of(title, summary)
+            or (raw_title != title and _is_echo_of(raw_title, summary))
+        ):
             summary = ""
         published = _parse_date(
             _first(entry, "pubDate", "atom:published", "atom:updated", "dc:date")

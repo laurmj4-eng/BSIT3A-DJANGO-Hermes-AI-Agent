@@ -83,6 +83,13 @@
   animation: dh-reveal 0.55s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
+/* Final state lock: guarantees content is visible even if the compositor
+   never advances the animation (throttled/embedded engines). */
+.reveal-done {
+  opacity: 1;
+  transform: none;
+}
+
 @keyframes dh-reveal {
   from {
     opacity: 0;
