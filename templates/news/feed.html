@@ -1,251 +1,352 @@
 {% extends "theme/base.html" %}
+{% load static %}
+{% load news_extras %}
+{% block title %}AI News · Hermes{% endblock %}
+{% block extra_css %}
+<link href="{% static 'css/news-feed.css' %}" rel="stylesheet"/>
+{% endblock %}
 {% block content %}
-<div class="container-xl">
+<div class="container-xl news-feed">
 
   <!-- PAGE HEADER -->
-  <div class="page-header d-print-none" aria-label="Page header">
-    <div class="container-xl">
-      <div class="row align-items-center">
-        <div class="col">
-          <div class="page-pretitle">Hermes Intelligence Feed</div>
-          <h2 class="page-title mb-0 d-none d-md-block">AI News</h2>
-          <h2 class="page-title mb-0 d-md-none">AI News</h2>
-        </div>
-        <div class="col-auto">
-          <button type="button" class="btn btn-primary" id="refreshBtn">
-            <i class="fas fa-rotate me-1"></i> Refresh feeds
+  <div class="page-header d-print-none mt-3" aria-label="Page header">
+    <div class="row align-items-end">
+      <div class="col">
+        <div class="page-pretitle">Hermes Intelligence Feed</div>
+        <h1 class="page-title mb-1">AI News</h1>
+        <p class="text-muted mb-0">
+          {{ total }} article{{ total|pluralize }} from {{ feed_count }} sources.
+          {% if last_updated %}Last updated {{ last_updated|timesince }} ago.{% endif %}
+        </p>
+      </div>
+      <div class="col-auto mt-2 mt-md-0 d-flex flex-wrap gap-2">
+        <button type="button" class="btn btn-primary" id="refreshBtn">
+          <i class="fas fa-rotate me-1" aria-hidden="true"></i> Refresh feeds
+        </button>
+        <div class="dropdown">
+          <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fas fa-download me-1" aria-hidden="true"></i> Export
           </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="{% url 'news:news_export' 'csv' %}{% if filter_query %}?{{ filter_query }}{% endif %}">CSV</a></li>
+            <li><a class="dropdown-item" href="{% url 'news:news_export' 'xlsx' %}{% if filter_query %}?{{ filter_query }}{% endif %}">XLSX</a></li>
+          </ul>
         </div>
+        <a class="btn btn-outline-secondary" href="{% url 'news:news_rss' %}{% if filter_query %}?{{ filter_query }}{% endif %}" target="_blank" rel="noopener">
+          <i class="fas fa-rss me-1" aria-hidden="true"></i> RSS
+        </a>
+        <a class="btn btn-outline-secondary" href="{% url 'news:sources_page' %}">
+          <i class="fas fa-heart-pulse me-1" aria-hidden="true"></i> Source health
+        </a>
       </div>
     </div>
   </div>
-  <br>
 
   <!-- REFRESH STATUS -->
-  <div id="refreshAlert" class="alert d-none" role="alert">
-    <div class="d-flex">
-      <div><h4 class="alert-heading" id="refreshAlertTitle">Feeds</h4></div>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-    <div class="alert-description" id="refreshAlertText"></div>
-  </div>
+  <div id="refreshAlert" class="alert d-none mt-3" role="status" aria-live="polite"></div>
 
-  <!-- SEARCH + SOURCE FILTER -->
-  <form method="GET" class="mb-3">
-    <div class="row g-2 align-items-end">
-      <div class="col-md-6">
-        <label class="form-label" for="q">Search</label>
-        <div class="input-group">
-          <span class="input-group-text"><i class="fas fa-search"></i></span>
-          <input type="text" name="q" id="q" value="{{ query }}" class="form-control"
-                 placeholder="Search headlines and summaries...">
+  <!-- FILTER PANEL -->
+  <form method="get" action="{% url 'news:news_list' %}" class="card mb-3 feed-filter-card" id="filterForm">
+    <div class="card-body">
+      <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-6 col-lg-4">
+          <label class="form-label" for="q">Search headlines</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="fas fa-search" aria-hidden="true"></i></span>
+            <input type="search" name="q" id="q" value="{{ query }}" class="form-control"
+                   placeholder="Keywords or source"
+                   data-autocomplete-url="{% url 'news:news_suggest' %}" aria-label="Search headlines">
+          </div>
+        </div>
+        <div class="col-12 col-md-6 col-lg-3">
+          <label class="form-label" for="source">Source</label>
+          <select name="source" id="source" class="form-select">
+            <option value="">All sources</option>
+            {% for opt in source_options %}
+              <option value="{{ opt.key }}" {% if source == opt.key %}selected{% endif %}>{{ opt.name }} ({{ opt.total }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-6 col-lg-3">
+          <label class="form-label" for="topic">Topic</label>
+          <select name="topic" id="topic" class="form-select">
+            <option value="">All topics</option>
+            {% for t in topic_choices %}
+              <option value="{{ t.slug }}" {% if topic == t.slug %}selected{% endif %}>{{ t.name }} ({{ t.total }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-6 col-lg-2 d-flex gap-2">
+          <button type="submit" class="btn btn-primary flex-fill">Apply</button>
+          <a class="btn btn-outline-secondary" href="{% url 'news:news_list' %}">Reset</a>
         </div>
       </div>
-      <div class="col-md-4">
-        <label class="form-label" for="source">Source</label>
-        <select name="source" id="source" class="form-select">
-          <option value="">All sources</option>
-          {% for key, name in source_choices %}
-            <option value="{{ key }}" {% if source == key %}selected{% endif %}>{{ name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-2 d-flex gap-2">
-        <button type="submit" class="btn btn-primary flex-fill">
-          <i class="fas fa-magnifying-glass me-1"></i> Search
-        </button>
-        {% if query or source %}
-          <a href="{% url 'news:news_list' %}" class="btn btn-outline-secondary">Clear</a>
+
+      <details class="mt-3">
+        <summary class="form-label mb-2" style="cursor: pointer;">More filters</summary>
+        <div class="row g-2 align-items-end">
+          <div class="col-12 col-md-4">
+            <label class="form-label" for="sort">Sort</label>
+            <select name="sort" id="sort" class="form-select">
+              {% for value, label in sort_choices %}
+                <option value="{{ value }}" {% if sort == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label" for="from">From date</label>
+            <input type="date" name="from" id="from" value="{{ date_from }}" class="form-control">
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label" for="to">To date</label>
+            <input type="date" name="to" id="to" value="{{ date_to }}" class="form-control">
+          </div>
+        </div>
+      </details>
+
+      <!-- Filter chips -->
+      <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
+        <a class="dh-chip {% if not saved_filter and not unread_filter and not has_filters %}dh-chip-active{% endif %}" href="{% url 'news:news_list' %}">All</a>
+        <a class="dh-chip {% if unread_filter %}dh-chip-active{% endif %}" href="?{{ unread_toggle_query }}">
+          <i class="fas fa-envelope-open-text" aria-hidden="true"></i> Unread
+          {% if unread_filter %}<i class="fas fa-xmark chip-x"></i>{% endif %}
+        </a>
+        <a class="dh-chip {% if saved_filter %}dh-chip-active{% endif %}" href="?{{ saved_toggle_query }}">
+          <i class="fas fa-bookmark" aria-hidden="true"></i> Saved{% if saved_total %} ({{ saved_total }}){% endif %}
+          {% if saved_filter %}<i class="fas fa-xmark chip-x"></i>{% endif %}
+        </a>
+        {% if query %}
+          <a class="dh-chip" href="{% querystring q=None %}">
+            <i class="fas fa-magnifying-glass" aria-hidden="true"></i> {{ query }} <i class="fas fa-xmark chip-x"></i>
+          </a>
         {% endif %}
+        {% if source %}
+          <a class="dh-chip" href="{% querystring source=None %}">
+            <i class="fas fa-rss" aria-hidden="true"></i> {{ source }} <i class="fas fa-xmark chip-x"></i>
+          </a>
+        {% endif %}
+        {% if topic %}
+          <a class="dh-chip" href="{% querystring topic=None %}">
+            <i class="fas fa-tag" aria-hidden="true"></i> {{ topic }} <i class="fas fa-xmark chip-x"></i>
+          </a>
+        {% endif %}
+        {% if date_from %}
+          <a class="dh-chip" href="{% querystring from=None %}">
+            <i class="fas fa-calendar" aria-hidden="true"></i> from {{ date_from }} <i class="fas fa-xmark chip-x"></i>
+          </a>
+        {% endif %}
+        {% if date_to %}
+          <a class="dh-chip" href="{% querystring to=None %}">
+            <i class="fas fa-calendar" aria-hidden="true"></i> to {{ date_to }} <i class="fas fa-xmark chip-x"></i>
+          </a>
+        {% endif %}
+        {% if has_filters %}
+          <a class="dh-chip" href="{% url 'news:news_list' %}">
+            <i class="fas fa-rotate-left" aria-hidden="true"></i> Clear all
+          </a>
+        {% endif %}
+        <span class="text-muted small ms-auto">
+          {{ active_filter_count }} filter{{ active_filter_count|pluralize }} active · {{ total }} result{{ total|pluralize }}
+        </span>
       </div>
     </div>
   </form>
 
-  <!-- META -->
-  <div class="card mb-3">
-    <div class="card-body py-2">
-      <div class="d-flex align-items-center justify-content-between flex-wrap">
-        <div>
-          <strong>{{ total }}</strong> article{{ total|pluralize }} cached
-          across <strong>{{ feed_count }}</strong> feeds
-        </div>
-        <div class="text-muted">
-          {% if last_updated %}
-            Last updated {{ last_updated|timesince }} ago
-          {% else %}
-            Never refreshed — click "Refresh feeds"
-          {% endif %}
-        </div>
+  <!-- RESULTS TOOLBAR -->
+  <div class="d-flex flex-wrap align-items-center gap-2 mb-3 feed-toolbar">
+    <div class="text-muted small" id="resultsSummary">
+      {% if total %}
+        Showing {{ articles.start_index }}–{{ articles.end_index }} of {{ total }}
+      {% else %}
+        No results
+      {% endif %}
+    </div>
+    <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
+      <span class="text-muted small">
+        Saved <strong id="savedCount">{{ saved_total }}</strong> · Read <strong id="readCount">{{ read_total }}</strong>
+      </span>
+      <div class="btn-group" role="group" aria-label="View mode">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-view="list" aria-pressed="true">List</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-view="grid" aria-pressed="false">Grid</button>
       </div>
     </div>
   </div>
 
   <!-- ARTICLES -->
-  <div class="row row-cards">
-    {% for a in articles %}
-      <div class="col-12">
-        <div class="card">
+  {% if articles.object_list %}
+    <div id="articlesContainer" class="articles-container feed-view-list">
+      {% for a in articles %}
+        <article class="card dh-article-card feed-article {% if a.is_read %}is-read{% endif %} {% if a.is_saved %}is-saved{% endif %}" data-article-id="{{ a.id }}">
           <div class="card-body">
-            <div class="d-flex align-items-start gap-3">
-              <div class="flex-fill">
-                <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                  <span class="badge bg-purple-lt text-purple">{{ a.source }}</span>
-                  {% if a.is_saved %}
-                    <span class="badge bg-green-lt text-green">
-                      <i class="fas fa-bookmark me-1"></i> Saved
-                    </span>
+            <div class="d-flex align-items-start gap-3 feed-article-body">
+              <div class="flex-fill min-w-0">
+                <div class="feed-article-meta mb-2">
+                  <span class="badge feed-badge feed-badge-source">{{ a.source }}</span>
+                  {% if a.is_read %}
+                    <span class="badge feed-badge feed-badge-read">Read</span>
                   {% endif %}
-                  {% if a.published_at %}
-                    <span class="text-muted small">{{ a.published_at|timesince }} ago</span>
+                  {% if a.is_saved %}
+                    <span class="badge feed-badge feed-badge-saved"><i class="fas fa-bookmark me-1" aria-hidden="true"></i>Saved</span>
+                  {% endif %}
+                  {% if a.published_at or a.fetched_at %}
+                    <time class="text-muted small" data-relative datetime="{% if a.published_at %}{{ a.published_at|date:'c' }}{% else %}{{ a.fetched_at|date:'c' }}{% endif %}">
+                      {% if a.published_at %}{{ a.published_at|timesince }} ago{% else %}{{ a.fetched_at|timesince }} ago{% endif %}
+                    </time>
+                  {% endif %}
+                  {% if a.view_count %}
+                    <span class="text-muted small"><i class="fas fa-eye me-1" aria-hidden="true"></i>{{ a.view_count }}</span>
                   {% endif %}
                 </div>
 
-                <h3 class="card-title mb-1">
-                  <a href="{{ a.url }}" target="_blank" rel="noopener noreferrer">{{ a.title }}</a>
-                </h3>
+                <h2 class="feed-article-title">
+                  <a href="{% url 'news:news_open' a.pk %}" target="_blank" rel="noopener noreferrer">{{ a.title }}</a>
+                </h2>
 
                 {% if a.summary %}
-                  <p class="text-muted mb-0">{{ a.summary }}</p>
+                  <p class="text-muted feed-article-summary">{{ a.summary }}</p>
+                {% endif %}
+
+                {% if a.topics.all %}
+                  <div class="d-flex flex-wrap gap-1 mb-2">
+                    {% for t in a.topics.all %}
+                      <a class="dh-chip feed-topic-chip" href="?{% querystring topic=t.slug %}" style="border-color: {{ t.color }};">
+                        <i class="fas fa-tag" aria-hidden="true" style="color: {{ t.color }};"></i> {{ t.name }}
+                      </a>
+                    {% endfor %}
+                  </div>
                 {% endif %}
               </div>
 
-              <button type="button" class="btn btn-ghost-secondary btn-icon btn-sm save-btn"
-                      data-id="{{ a.id }}" data-saved="{{ a.is_saved|yesno:'1,0' }}"
-                      title="Save for later">
-                <i class="fas fa-bookmark"></i>
-              </button>
+              <div class="feed-article-actions">
+                <button type="button" class="btn btn-ghost-secondary btn-icon feed-action-btn"
+                        data-save-id="{{ a.id }}" data-id="{{ a.id }}"
+                        data-saved="{% if a.is_saved %}1{% else %}0{% endif %}"
+                        aria-pressed="{% if a.is_saved %}true{% else %}false{% endif %}"
+                        title="{% if a.is_saved %}Remove bookmark{% else %}Save for later{% endif %}">
+                  <i class="fas fa-bookmark {% if a.is_saved %}text-yellow{% endif %}" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="btn btn-ghost-secondary btn-icon feed-action-btn"
+                        data-read-id="{{ a.id }}"
+                        data-read="{% if a.is_read %}1{% else %}0{% endif %}"
+                        aria-pressed="{% if a.is_read %}true{% else %}false{% endif %}"
+                        title="{% if a.is_read %}Mark as unread{% else %}Mark as read{% endif %}">
+                  <i class="fas fa-check-circle" aria-hidden="true"></i>
+                </button>
+                <a class="btn btn-ghost-secondary btn-icon feed-action-btn"
+                   href="{% url 'news:news_open' a.pk %}" target="_blank" rel="noopener noreferrer"
+                   title="Open article">
+                  <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+                </a>
+              </div>
             </div>
           </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card">
+      <div class="card-body feed-empty">
+        <span class="dh-empty-icon">
+          {% if saved_filter %}<i class="fas fa-bookmark"></i>
+          {% elif unread_filter %}<i class="fas fa-check-double"></i>
+          {% elif date_from or date_to %}<i class="fas fa-calendar"></i>
+          {% elif query or source or topic %}<i class="fas fa-filter"></i>
+          {% else %}<i class="fas fa-robot"></i>{% endif %}
+        </span>
+        <p class="empty-title">
+          {% if saved_filter %}No saved articles yet
+          {% elif unread_filter %}No unread articles
+          {% elif date_from or date_to %}No articles in this date range
+          {% elif query or source or topic %}No stories match this filter
+          {% else %}No articles yet{% endif %}
+        </p>
+        <p class="empty-subtitle">
+          {% if saved_filter %}Bookmark stories with the bookmark button and they will appear here.
+          {% elif unread_filter %}You are all caught up.
+          {% elif date_from or date_to %}Try widening the date range.
+          {% elif query or source or topic %}Try a different keyword or clear the filters.
+          {% else %}Click “Refresh feeds” to pull the latest AI news.{% endif %}
+        </p>
+        <div class="empty-action d-flex gap-2 justify-content-center flex-wrap">
+          {% if has_filters %}
+            <a href="{% url 'news:news_list' %}" class="btn btn-outline-secondary">
+              <i class="fas fa-rotate-left me-1" aria-hidden="true"></i> Clear filters
+            </a>
+          {% endif %}
+          {% if not has_filters %}
+            <button type="button" class="btn btn-primary refresh-trigger">
+              <i class="fas fa-rotate me-1" aria-hidden="true"></i> Refresh feeds
+            </button>
+          {% endif %}
         </div>
       </div>
-    {% empty %}
-      <div class="col-12">
-        <div class="card">
-          <div class="card-body">
-            <div class="empty py-5">
-              <div class="empty-icon"><i class="fas fa-robot fa-2x text-muted"></i></div>
-              <p class="empty-title">No articles yet</p>
-              <p class="empty-subtitle">
-                {% if query or source %}
-                  No results for this filter.
-                {% else %}
-                  Click "Refresh feeds" to pull the latest AI news.
-                {% endif %}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    {% endfor %}
-  </div>
-
-  <!-- PAGINATION -->
-  {% if articles.paginator.num_pages > 1 %}
-    <div class="card-footer d-flex align-items-center mt-3">
-      <p class="m-0 text-muted">
-        Showing <span class="fw-medium">{{ articles.start_index }}</span>
-        to <span class="fw-medium">{{ articles.end_index }}</span>
-        of <span class="fw-medium">{{ articles.paginator.count }}</span> articles
-      </p>
-      <ul class="pagination m-0 ms-auto">
-        {% if articles.has_previous %}
-          <li class="page-item">
-            <a class="page-link" href="?page={{ articles.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if source %}&source={{ source }}{% endif %}">
-              <i class="fas fa-chevron-left"></i> prev
-            </a>
-          </li>
-        {% endif %}
-        {% for num in articles.paginator.page_range %}
-          <li class="page-item {% if articles.number == num %}active{% endif %}">
-            <a class="page-link" href="?page={{ num }}{% if query %}&q={{ query }}{% endif %}{% if source %}&source={{ source }}{% endif %}">{{ num }}</a>
-          </li>
-        {% endfor %}
-        {% if articles.has_next %}
-          <li class="page-item">
-            <a class="page-link" href="?page={{ articles.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if source %}&source={{ source }}{% endif %}">
-              next <i class="fas fa-chevron-right"></i>
-            </a>
-          </li>
-        {% endif %}
-      </ul>
     </div>
   {% endif %}
 
+  <!-- PAGINATION -->
+  {% if articles.paginator.num_pages > 1 %}
+    <div class="card mt-3">
+      <div class="card-footer feed-pagination d-flex flex-wrap align-items-center gap-2">
+        <p class="m-0 text-muted small">
+          Page {{ articles.number }} of {{ articles.paginator.num_pages }} ·
+          Showing <span class="fw-medium">{{ articles.start_index }}</span>
+          to <span class="fw-medium">{{ articles.end_index }}</span>
+          of <span class="fw-medium">{{ articles.paginator.count }}</span>
+        </p>
+        <nav class="ms-auto" aria-label="Pagination">
+          <ul class="pagination m-0">
+            {% if articles.has_previous %}
+              <li class="page-item">
+                <a class="page-link" href="{% if filter_query %}?{{ filter_query }}&page={{ articles.previous_page_number }}{% else %}?page={{ articles.previous_page_number }}{% endif %}">
+                  <i class="fas fa-chevron-left" aria-hidden="true"></i> Prev
+                </a>
+              </li>
+            {% endif %}
+            {% for num in page_range %}
+              {% if num is None %}
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+              {% else %}
+                <li class="page-item {% if articles.number == num %}active{% endif %}">
+                  <a class="page-link" href="{% if filter_query %}?{{ filter_query }}&page={{ num }}{% else %}?page={{ num }}{% endif %}"
+                     {% if articles.number == num %}aria-current="page"{% endif %}>{{ num }}</a>
+                </li>
+              {% endif %}
+            {% endfor %}
+            {% if articles.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="{% if filter_query %}?{{ filter_query }}&page={{ articles.next_page_number }}{% else %}?page={{ articles.next_page_number }}{% endif %}">
+                  Next <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                </a>
+              </li>
+            {% endif %}
+          </ul>
+        </nav>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- BOTTOM UTILITY STRIP -->
+  <div class="card mt-3">
+    <div class="card-body d-flex flex-wrap align-items-center gap-2 feed-utility">
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'news:news_rss' %}{% if filter_query %}?{{ filter_query }}{% endif %}" target="_blank" rel="noopener">
+        <i class="fas fa-rss me-1" aria-hidden="true"></i> RSS
+      </a>
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'news:news_api' %}">API</a>
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'news:sources_page' %}">Source health</a>
+      <span class="text-muted small ms-auto">
+        Data refreshed
+        {% if last_updated %}{{ last_updated|timesince }} ago{% else %}never{% endif %}
+      </span>
+    </div>
+  </div>
+
+  <div id="newsFeedConfig" class="d-none"
+       data-refresh-url="{% url 'news:news_refresh' %}"
+       data-save-url-template="{% url 'news:news_toggle_save' 0 %}"
+       data-read-url-template="{% url 'news:news_toggle_read' 0 %}"></div>
+
 </div>
-
-<script>
-(function () {
-    const REFRESH_URL = "{% url 'news:news_refresh' %}";
-    const SAVE_URL_BASE = "/news/save/";
-
-    function getCookie(name) {
-        const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-        return match ? decodeURIComponent(match[2]) : null;
-    }
-    const csrftoken = getCookie('csrftoken');
-
-    const alertBox = document.getElementById('refreshAlert');
-
-    function showAlert(kind, title, msg) {
-        alertBox.className = 'alert alert-' + kind + ' alert-dismissible fade show';
-        document.getElementById('refreshAlertTitle').textContent = title;
-        document.getElementById('refreshAlertText').textContent = msg;
-    }
-
-    document.getElementById('refreshBtn').addEventListener('click', function () {
-        const btn = this;
-        btn.disabled = true;
-        const original = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Fetching...';
-
-        fetch(REFRESH_URL, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': csrftoken },
-        })
-        .then(async (resp) => {
-            const data = await resp.json();
-            if (!resp.ok) throw new Error(data.error || 'Refresh failed.');
-            return data;
-        })
-        .then((data) => {
-            const failed = (data.errors && data.errors.length) || 0;
-            if (failed) {
-                showAlert('warning', 'Partial refresh',
-                    data.created + ' new, ' + data.updated + ' existing. ' +
-                    failed + ' feed(s) failed: ' + data.errors.map(e => e.source).join(', '));
-            } else {
-                showAlert('success', 'Feeds updated',
-                    data.created + ' new article(s) added, ' + data.updated + ' already known.');
-            }
-            setTimeout(() => window.location.reload(), 1800);
-        })
-        .catch((err) => {
-            showAlert('danger', 'Refresh failed', err.message);
-        })
-        .finally(() => {
-            btn.disabled = false;
-            btn.innerHTML = original;
-        });
-    });
-
-    // Save / unsave a single article
-    document.querySelectorAll('.save-btn').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            btn.disabled = true;
-            fetch(SAVE_URL_BASE + btn.dataset.id + '/', {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrftoken },
-            })
-            .then(r => r.json())
-            .then((data) => {
-                const saved = !!data.is_saved;
-                btn.dataset.saved = saved ? '1' : '0';
-                btn.querySelector('i').classList.toggle('text-yellow', saved);
-            })
-            .catch(() => {})
-            .finally(() => { btn.disabled = false; });
-        });
-    });
-})();
-</script>
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'js/news-feed.js' %}" defer></script>
 {% endblock %}

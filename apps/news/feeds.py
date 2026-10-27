@@ -7,10 +7,12 @@ raises ``FeedError`` and never breaks the others.
 
 from __future__ import annotations
 
+import concurrent.futures
 import re
 import socket
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 # Keep responses small and fail fast rather than hanging the request.
@@ -38,7 +40,7 @@ FEEDS = [
     {
         "key": "arxiv_cs_ai",
         "name": "arXiv cs.AI",
-        "url": "http://export.arxiv.org/rss/cs.AI",
+        "url": "https://export.arxiv.org/rss/cs.AI",
     },
     {
         "key": "mit_news_ai",
@@ -56,9 +58,34 @@ NS = {
 
 _TAG_RE = re.compile(r"<[^>]+>")
 
+# URL schemes we allow on ingest. Everything else (javascript:, data:,
+# vbscript:, file:, ftp:, relative URLs, ...) is rejected.
+_ALLOWED_SCHEMES = ("http", "https")
+
 
 class FeedError(Exception):
     """Raised when a single feed cannot be fetched or parsed."""
+
+
+def normalise_url(value: str | None) -> str | None:
+    """Return a cleaned absolute http(s) URL, or ``None`` when unsafe.
+
+    Strips surrounding whitespace, requires an absolute URL and only allows
+    the ``http`` and ``https`` schemes so ``javascript:``, ``data:``,
+    ``vbscript:``, ``file:``, ``ftp:`` and relative URLs never reach the DB.
+    """
+    if not value:
+        return None
+    cleaned = value.strip()
+    if not cleaned:
+        return None
+    try:
+        parsed = urlparse(cleaned)
+    except ValueError:
+        return None
+    if parsed.scheme not in _ALLOWED_SCHEMES or not parsed.netloc:
+        return None
+    return cleaned
 
 
 def _clean(text: str | None, limit: int = 400) -> str:
@@ -94,13 +121,40 @@ def _first(entry: ET.Element, *paths: str) -> str | None:
     return None
 
 
+def _atom_link(entry: ET.Element) -> str | None:
+    """Pick the best ``atom:link`` for an entry.
+
+    Prefers ``rel="alternate"`` (or links with no rel at all) over
+    ``rel="self"``, which points back at the feed rather than the article.
+    Inspects every ``atom:link`` child instead of only the first one.
+    """
+    best: str | None = None
+    for link in entry.findall("atom:link", NS):
+        href = (link.get("href") or "").strip()
+        if not href:
+            continue
+        rel = (link.get("rel") or "").strip().lower()
+        if rel in ("", "alternate"):
+            return href
+        if best is None:
+            best = href
+    return best
+
+
 def _is_echo_of(title: str, summary: str) -> bool:
     """True when *summary* is just *title* repeated, plus maybe a publisher.
 
     Google News emits ``<title>Headline - Publisher</title>`` but
     ``<description>Headline Publisher</description>`` — the separator is dropped
-    by tag stripping — so a plain ``startswith`` test misses it. Compare with
-    punctuation removed and allow a short trailing publisher name.
+    by tag stripping — so a plain ``startswith`` test misses it.
+
+    Only two shapes count as an echo:
+    1. the normalised words are exactly the title's words, or
+    2. the summary equals the title words plus at most 6 trailing publisher
+       words AND the summary adds no sentence punctuation beyond the
+       publisher tail.
+
+    A meaningful sentence that merely *starts* with the title is not an echo.
     """
     def norm(text: str) -> str:
         return re.sub(r"[^\w\s]", "", text).lower().split()
@@ -108,14 +162,26 @@ def _is_echo_of(title: str, summary: str) -> bool:
     a, b = norm(title), norm(summary)
     if not a or not b:
         return False
-    if a == b or b[:len(a)] == a:
+    if a == b:
         return True
-    # Headline + publisher name, e.g. "... - The Washington Post"
-    return len(b) > len(a) and b[:len(a)] == a and len(b) - len(a) <= 6
+    if len(b) > len(a) and b[: len(a)] == a and len(b) - len(a) <= 6:
+        # The extra words must look like a publisher tail, not a sentence:
+        # no sentence punctuation inside the summary beyond the title itself.
+        tail = summary[len(title):] if summary.lower().startswith(title.lower()) else None
+        if tail is not None:
+            body = summary[: len(title)]
+            if not re.search(r"[.!?]", body):
+                return True
+        else:
+            # Title was normalised differently (punctuation); fall back to
+            # checking the whole summary for sentence punctuation.
+            if not re.search(r"[.!?]", summary):
+                return True
+    return False
 
 
 def _parse_date(value: str | None) -> datetime | None:
-    """Best-effort RFC822 / ISO8601 date parsing."""
+    """Best-effort RFC822 / ISO8601 date parsing, always returning aware UTC."""
     if not value:
         return None
     from email.utils import parsedate_to_datetime
@@ -129,7 +195,10 @@ def _parse_date(value: str | None) -> datetime | None:
         pass
     for fmt in ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S"):
         try:
-            return datetime.strptime(value, fmt).replace(tzinfo=timezone.utc)
+            dt = datetime.strptime(value, fmt)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc)
         except ValueError:
             continue
     return None
@@ -161,9 +230,13 @@ def fetch_feed(spec: dict) -> list[dict]:
     articles = []
     for entry in entries:
         title = _clean(_first(entry, "title", "atom:title"), limit=300)
-        link = _first(entry, "link", "atom:link")
+        link = _atom_link(entry) or _first(entry, "link")
         if not title or not link:
             continue
+
+        url = normalise_url(link)
+        if not url:
+            continue  # skip entries without a safe, absolute URL
 
         summary = _clean(
             _first(
@@ -188,7 +261,7 @@ def fetch_feed(spec: dict) -> list[dict]:
                 "source": spec["name"],
                 "feed_key": spec["key"],
                 "title": title,
-                "url": link,
+                "url": url,
                 "summary": summary,
                 "published_at": published,
             }
@@ -200,18 +273,32 @@ def fetch_feed(spec: dict) -> list[dict]:
 
 
 def fetch_all_feeds(per_feed_limit: int = 25) -> tuple[list[dict], list[dict]]:
-    """Fetch every configured feed.
+    """Fetch every configured feed in parallel.
 
     Returns ``(articles, errors)`` where *errors* holds one dict per feed that
     failed, so the UI can report partial success instead of failing outright.
+    Articles keep deterministic ordering by feed order.
     """
-    articles: list[dict] = []
     errors: list[dict] = []
+    results: list[list[dict] | None] = [None] * len(FEEDS)
 
-    for spec in FEEDS:
-        try:
-            articles.extend(fetch_feed(spec)[:per_feed_limit])
-        except FeedError as exc:
-            errors.append({"source": spec["name"], "error": str(exc)})
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(FEEDS)) as pool:
+        futures = [pool.submit(fetch_feed, spec) for spec in FEEDS]
+        for idx, future in enumerate(futures):
+            spec = FEEDS[idx]
+            try:
+                results[idx] = future.result()[:per_feed_limit]
+            except FeedError as exc:
+                errors.append(
+                    {"key": spec["key"], "source": spec["name"], "error": str(exc)}
+                )
+            except Exception as exc:  # defensive: never lose a feed silently
+                errors.append(
+                    {"key": spec["key"], "source": spec["name"], "error": str(exc)}
+                )
 
+    articles: list[dict] = []
+    for batch in results:
+        if batch:
+            articles.extend(batch)
     return articles, errors

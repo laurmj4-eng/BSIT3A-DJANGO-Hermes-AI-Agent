@@ -1,0 +1,77 @@
+{% load static %}
+<header class="dh-topbar d-print-none">
+  <div class="container-xl">
+    <div class="dh-topbar-inner">
+
+      <a class="dh-topbar-brand" href="{% url 'dashboard' %}" aria-label="Hermes AI News Agent — dashboard">
+        <span class="dh-brand-mark"><i class="fa-solid fa-robot"></i></span>
+        <span class="lh-1">
+          <span class="dh-brand-name">Hermes<span class="text-warning">AI</span></span>
+          <span class="dh-brand-sub">News Agent</span>
+        </span>
+      </a>
+
+      <nav class="dh-topbar-nav d-none d-lg-flex" aria-label="Primary">
+        <a class="dh-topbar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+           href="{% url 'dashboard' %}"
+           {% if request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}>
+          Dashboard
+        </a>
+        <a class="dh-topbar-link {% if request.resolver_match.url_name == 'news_list' %}active{% endif %}"
+           href="{% url 'news:news_list' %}"
+           {% if request.resolver_match.url_name == 'news_list' %}aria-current="page"{% endif %}>
+          AI News
+        </a>
+        <a class="dh-topbar-link {% if request.resolver_match.url_name == 'sources_page' %}active{% endif %}"
+           href="{% url 'news:sources_page' %}"
+           {% if request.resolver_match.url_name == 'sources_page' %}aria-current="page"{% endif %}>
+          Sources
+        </a>
+      </nav>
+
+      <form class="dh-topbar-search d-none d-md-flex" action="{% url 'news:news_list' %}" method="get" role="search">
+        <i class="fas fa-search" aria-hidden="true"></i>
+        <input type="search" name="q" value="{{ request.GET.q|default:'' }}" class="form-control"
+               placeholder="Search headlines, sources..." aria-label="Search AI news">
+        <button type="submit" class="visually-hidden">Search</button>
+      </form>
+
+      <div class="dh-topbar-actions">
+        <a href="{% url 'news:news_list' %}" class="btn btn-primary btn-sm d-none d-sm-inline-flex">
+          <i class="fas fa-rss me-1"></i> Open feed
+        </a>
+        <button class="dh-icon-btn d-lg-none" type="button"
+                data-bs-toggle="collapse" data-bs-target="#dhMobileNav"
+                aria-controls="dhMobileNav" aria-expanded="false" aria-label="Toggle navigation">
+          <i class="fas fa-bars"></i>
+        </button>
+      </div>
+
+    </div>
+
+    <div class="collapse d-lg-none" id="dhMobileNav">
+      <nav class="dh-mobile-nav" aria-label="Mobile">
+        <a class="dh-topbar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}"
+           href="{% url 'dashboard' %}"
+           {% if request.resolver_match.url_name == 'dashboard' %}aria-current="page"{% endif %}>Dashboard</a>
+        <a class="dh-topbar-link {% if request.resolver_match.url_name == 'news_list' %}active{% endif %}"
+           href="{% url 'news:news_list' %}"
+           {% if request.resolver_match.url_name == 'news_list' %}aria-current="page"{% endif %}>AI News</a>
+        <a class="dh-topbar-link {% if request.resolver_match.url_name == 'sources_page' %}active{% endif %}"
+           href="{% url 'news:sources_page' %}"
+           {% if request.resolver_match.url_name == 'sources_page' %}aria-current="page"{% endif %}>Sources</a>
+        <a class="dh-topbar-link" href="#offcanvasSettings"
+           data-bs-toggle="offcanvas" data-bs-target="#offcanvasSettings"
+           aria-controls="offcanvasSettings">Theme settings</a>
+        <form class="mt-2" action="{% url 'news:news_list' %}" method="get" role="search">
+          <div class="input-group">
+            <span class="input-group-text"><i class="fas fa-search"></i></span>
+            <input type="search" name="q" value="{{ request.GET.q|default:'' }}" class="form-control"
+                   placeholder="Search AI news..." aria-label="Search AI news">
+            <button class="btn btn-primary" type="submit">Search</button>
+          </div>
+        </form>
+      </nav>
+    </div>
+  </div>
+</header>

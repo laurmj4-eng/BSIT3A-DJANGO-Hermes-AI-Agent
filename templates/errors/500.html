@@ -1,0 +1,38 @@
+{% extends "theme/base.html" %}
+
+{% block title %}Server error · Hermes AI News Agent{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none mt-3 mb-3">
+    <div class="page-pretitle">Error 500</div>
+    <h1 class="page-title mb-1">Something went wrong</h1>
+    <p class="text-muted mb-0">
+      An unexpected error occurred on our servers. Please try again in a moment.
+    </p>
+  </div>
+
+  <div class="card">
+    <div class="card-body py-4">
+      <div class="empty">
+        <div class="empty-icon">
+          <i class="fas fa-triangle-exclamation fa-2x text-muted" aria-hidden="true"></i>
+        </div>
+        <p class="empty-title">The server hit a problem</p>
+        <p class="empty-subtitle">
+          Your request wasn't completed. Try reloading the page,
+          or return to the dashboard.
+        </p>
+        <div class="empty-action d-flex gap-2 flex-wrap justify-content-center">
+          <a href="{% url 'dashboard' %}" class="btn btn-primary">
+            <i class="fas fa-gauge me-1" aria-hidden="true"></i> Go to Dashboard
+          </a>
+          <a href="{% url 'news:news_list' %}" class="btn btn-outline-primary">
+            <i class="fas fa-robot me-1" aria-hidden="true"></i> Open AI News
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

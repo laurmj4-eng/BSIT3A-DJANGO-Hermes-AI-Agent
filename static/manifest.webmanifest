@@ -1,0 +1,65 @@
+{
+  "id": "/",
+  "name": "Hermes AI News",
+  "short_name": "Hermes",
+  "description": "AI News Aggregator - Stay updated with the latest artificial intelligence news from multiple sources",
+  "lang": "en",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#0f172a",
+  "background_color": "#f5f7fb",
+  "orientation": "portrait-primary",
+  "categories": ["news", "productivity"],
+  "shortcuts": [
+    {
+      "name": "AI News",
+      "short_name": "News",
+      "url": "/news/",
+      "icons": [
+        {
+          "src": "/static/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Source health",
+      "short_name": "Health",
+      "url": "/news/sources/",
+      "icons": [
+        {
+          "src": "/static/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/static/icons/favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    }
+  ]
+}

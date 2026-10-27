@@ -1,0 +1,257 @@
+/* ==========================================================================
+   App UI: reusable components (no framework)
+   ========================================================================== */
+
+/* Toast stack */
+.dh-toast-stack {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 1080;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.dh-toast {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--tblr-border-radius);
+  border: 1px solid var(--tblr-border-color);
+  background-color: var(--tblr-bg-surface);
+  color: var(--tblr-body-color);
+  font-size: 0.875rem;
+  box-shadow: var(--tblr-shadow);
+  animation: dhToastIn 0.3s ease forwards;
+  min-width: 220px;
+}
+.dh-toast.is-success {
+  border-color: var(--tblr-success);
+  background-color: color-mix(in srgb, var(--tblr-success) 12%, var(--tblr-bg-surface));
+}
+.dh-toast.is-danger {
+  border-color: var(--tblr-danger);
+  background-color: color-mix(in srgb, var(--tblr-danger) 12%, var(--tblr-bg-surface));
+}
+.dh-toast.is-warning {
+  border-color: var(--tblr-warning);
+  background-color: color-mix(in srgb, var(--tblr-warning) 12%, var(--tblr-bg-surface));
+}
+.dh-toast.is-info {
+  border-color: var(--tblr-info);
+  background-color: color-mix(in srgb, var(--tblr-info) 12%, var(--tblr-bg-surface));
+}
+
+@keyframes dhToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Reduced-motion fallback */
+@media (prefers-reduced-motion: reduce) {
+  .dh-toast {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Skeleton shimmer */
+.dh-skeleton {
+  background: var(--tblr-bg-surface-secondary);
+  border-radius: var(--tblr-border-radius);
+  animation: dhSkeletonShimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes dhSkeletonShimmer {
+  0% { background-color: var(--tblr-bg-surface-secondary); }
+  50% { background-color: color-mix(in srgb, var(--tblr-primary) 20%, var(--tblr-bg-surface-secondary)); }
+  100% { background-color: var(--tblr-bg-surface-secondary); }
+}
+
+.dh-skeleton-row {
+  height: 1rem;
+  margin-bottom: 0.5rem;
+}
+.dh-skeleton-row:last-child { margin-bottom: 0; }
+.dh-skeleton-title { height: 1.25rem; width: 60%; }
+.dh-skeleton-sub { height: 1rem; width: 40%; }
+.dh-skeleton-card {
+  width: 100%;
+  aspect-ratio: 1 / 1.5;
+  border-radius: var(--tblr-border-radius-lg);
+}
+
+/* Autocomplete */
+.dh-autocomplete {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+}
+.dh-autocomplete-input {
+  display: block;
+}
+.dh-autocomplete-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 0.25rem;
+  border: 1px solid var(--tblr-border-color);
+  border-radius: var(--tblr-border-radius);
+  background-color: var(--tblr-bg-surface);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1060;
+  list-style: none;
+  padding: 0;
+}
+.dh-autocomplete-list li {
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background-color 0.15s ease;
+}
+.dh-autocomplete-list li:hover,
+.dh-autocomplete-list li.highlighted {
+  background-color: var(--tblr-bg-surface-secondary);
+  color: var(--tblr-primary);
+}
+.dh-autocomplete-list li[role="option"]:hover {
+  background-color: var(--tblr-bg-surface-secondary);
+}
+.dh-autocomplete-loading::after {
+  content: "";
+  position: absolute;
+  right: 0.75rem;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: dhAutocompleteSpin 0.8s linear infinite;
+}
+@keyframes dhAutocompleteSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Empty state */
+.dh-empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+.dh-empty-state-icon {
+  width: 4rem;
+  height: 4rem;
+  margin: 0 auto 0.75rem;
+  border-radius: 1rem;
+  background: var(--tblr-bg-surface-secondary);
+  color: var(--tblr-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+.dh-empty-state-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.25rem; }
+.dh-empty-state-sub { color: var(--tblr-muted); font-size: 0.875rem; margin-bottom: 1rem; }
+.dh-empty-state-action .btn { font-size: 0.875rem; }
+
+/* Topic chip */
+.dh-topic-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 100rem;
+  border: 1px solid var(--tblr-border-color);
+  background: var(--tblr-bg-surface-secondary);
+  color: var(--tblr-body-color);
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.dh-topic-chip:hover {
+  border-color: rgba(var(--tblr-primary-rgb), 0.45);
+  color: var(--tblr-primary);
+}
+.dh-topic-dot {
+  display: inline-block;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-right: 0.3rem;
+}
+
+/* Health badge */
+.dh-health-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 100rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.dh-health-badge.ok { background: color-mix(in srgb, #22c55e 12%, #fff); color: #16a34a; }
+.dh-health-badge.warn { background: color-mix(in srgb, #f59e0b 12%, #fff); color: #ea580c; }
+.dh-health-badge.down { background: color-mix(in srgb, #ef4444 12%, #fff); color: #b91c1c; }
+.dh-health-badge.unknown { background: var(--tblr-bg-surface); color: var(--tblr-muted); }
+
+/* Stat tile */
+.dh-stat-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-radius: var(--tblr-border-radius-lg);
+  background: var(--tblr-bg-surface);
+  border: 1px solid var(--tblr-border-color);
+  min-height: 80px;
+}
+.dh-stat-tile .dh-stat-value { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
+.dh-stat-tile .dh-stat-label { font-size: 0.66rem; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--tblr-muted); }
+
+/* Filter bar */
+.dh-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.dh-filter-bar .form-select,
+.dh-filter-bar .form-control {
+  font-size: 0.875rem;
+}
+
+/* ==========================================================================
+   Custom focus-visible treatment
+   ========================================================================== */
+a:focus-visible,
+button:focus-visible,
+.chip:focus-visible,
+.nav-link:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--dh-focus-ring);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Micro-label size guard: ensure form controls inside dh-topbar-search are at least 1rem on small screens
+   ========================================================================== */
+@media (max-width: 575.98px) {
+  .dh-topbar-search .form-control,
+  .dh-topbar-search .form-select {
+    font-size: 1rem !important;
+  }
+}

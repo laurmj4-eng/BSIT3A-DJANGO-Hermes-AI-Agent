@@ -39,7 +39,7 @@
   var fullscreenBtn = document.getElementById('orbit-fullscreen');
   var cosmosHint = document.getElementById('cosmos-hint');
 
-  var models = (window.HERMES_MODELS || []).slice(0, 6);
+  var models = (window.HERMES_MODELS || []).slice(0, 7);
   var reduceMotion = window.matchMedia &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var speed = reduceMotion ? 0 : 1;

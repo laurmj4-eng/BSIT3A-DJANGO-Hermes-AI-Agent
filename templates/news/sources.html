@@ -1,0 +1,207 @@
+{% extends "theme/base.html" %}
+{% load static %}
+{% block title %}Source Health · Hermes{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/sources.css' %}" rel="stylesheet"/>
+{% endblock %}
+
+{% block content %}
+<div class="container-xl sources-page">
+<!-- PAGE HEADER -->
+<div class="page-header d-print-none mt-3" aria-label="Page header">
+  <div class="row align-items-end">
+    <div class="col">
+      <div class="page-pretitle">Operations</div>
+      <h1 class="page-title mb-1">Source health</h1>
+      <p class="text-muted mb-0">
+        Overview of feed health and recent refresh activity.
+      </p>
+    </div>
+    <div class="col-12 col-md-auto mt-3 mt-md-0">
+      <div class="d-flex flex-column flex-md-row gap-2">
+        <a href="{% url 'news:news_list' %}" class="btn btn-accent">
+          <i class="fas fa-arrow-left me-1"></i> Back to AI News
+        </a>
+        <button type="button" class="btn btn-accent" id="refreshSourcesBtn"
+                data-refresh-url="{% url 'news:news_refresh' %}">
+          <i class="fas fa-rotate me-1" aria-hidden="true"></i> Refresh feeds
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SUMMARY STAT TILES -->
+<div class="row mt-4 g-3">
+  <div class="col-6 col-lg-3">
+    <div class="card health-stat health-stat--total h-100">
+      <div class="card-body d-flex align-items-center justify-content-between gap-3">
+        <div>
+          <div class="text-muted small mb-1">Total sources</div>
+          <div class="health-stat-value" data-testid="stat-total">{{ summary.total }}</div>
+        </div>
+        <span class="health-stat-icon" aria-hidden="true"><i class="fas fa-layer-group"></i></span>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card health-stat health-stat--ok h-100">
+      <div class="card-body d-flex align-items-center justify-content-between gap-3">
+        <div>
+          <div class="text-muted small mb-1">Healthy</div>
+          <div class="health-stat-value" data-testid="stat-ok">{{ summary.ok }}</div>
+        </div>
+        <span class="health-stat-icon" aria-hidden="true"><i class="fas fa-circle-check"></i></span>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card health-stat health-stat--error h-100">
+      <div class="card-body d-flex align-items-center justify-content-between gap-3">
+        <div>
+          <div class="text-muted small mb-1">Failing</div>
+          <div class="health-stat-value" data-testid="stat-error">{{ summary.error }}</div>
+        </div>
+        <span class="health-stat-icon" aria-hidden="true"><i class="fas fa-triangle-exclamation"></i></span>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="card health-stat health-stat--idle h-100">
+      <div class="card-body d-flex align-items-center justify-content-between gap-3">
+        <div>
+          <div class="text-muted small mb-1">Idle</div>
+          <div class="health-stat-value" data-testid="stat-idle">{{ summary.idle }}</div>
+        </div>
+        <span class="health-stat-icon" aria-hidden="true"><i class="fas fa-hourglass-half"></i></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SOURCE TABLE -->
+<div class="row mt-4">
+  <div class="col-12">
+    <h2 class="page-header-title small text-muted mb-3">Source status</h2>
+    <div class="table-responsive">
+    <table class="table align-middle health-table" data-refresh-url="{% url 'news:news_refresh' %}" data-json-url="{% url 'news:sources_json' %}">
+      <caption class="visually-hidden">Source health status</caption>
+      <thead>
+        <tr>
+          <th scope="col">Source</th>
+          <th scope="col">Status</th>
+          <th scope="col">Articles</th>
+          <th scope="col" class="d-none d-md-table-cell">Latest article</th>
+          <th scope="col" class="d-none d-md-table-cell">Error</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in sources %}
+        <tr>
+          <td>
+            <a href="{% url 'news:news_list' %}?source={{ row.key }}" aria-label="View {{ row.name }} articles">
+              {{ row.name }}
+            </a>
+            {% if row.error %}
+              <span class="text-danger ms-1" title="{{ row.error }}" aria-label="Feed error: {{ row.error }}">
+                <i class="fas fa-circle-exclamation" aria-hidden="true"></i>
+              </span>
+            {% endif %}
+            <div class="d-md-none small text-muted">
+              {% if row.last_article %}Latest {{ row.last_article|date:"M d H:i" }}{% else %}No articles yet{% endif %}
+            </div>
+          </td>
+          <td>
+            <span class="health-status health-status--{{ row.status }}">{{ row.status|title }}</span>
+          </td>
+          <td>{{ row.total }}</td>
+          <td class="d-none d-md-table-cell">
+            {% if row.last_article %}
+              {{ row.last_article|date:"M d H:i" }}
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="d-none d-md-table-cell">
+            {% if row.error %}
+              <span class="text-muted small" title="{{ row.error }}">{{ row.error|truncatechars:64 }}</span>
+            {% else %}
+              <span class="text-muted" aria-label="No error">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="text-center text-muted">No sources configured.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- RECENT REFRESH RUNS -->
+<div class="row mt-4">
+  <div class="col-12">
+    <h2 class="page-header-title small text-muted mb-3">Recent refresh runs</h2>
+    {% if runs %}
+    <div class="table-responsive">
+    <table class="table table-sm align-middle health-runs">
+      <thead>
+        <tr>
+          <th scope="col">Started</th>
+          <th scope="col">Status</th>
+          <th scope="col" class="d-none d-lg-table-cell">Trigger</th>
+          <th scope="col">New</th>
+          <th scope="col">Updated</th>
+          <th scope="col" class="d-none d-md-table-cell">Total</th>
+          <th scope="col" class="d-none d-md-table-cell">Duration</th>
+          <th scope="col" class="d-none d-lg-table-cell">Errors</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for run in runs %}
+        <tr>
+          <td>{{ run.started_at|date:"M d H:i" }}</td>
+          <td>
+            <span class="health-status health-status--{{ run.status }}">{{ run.status|title }}</span>
+          </td>
+          <td class="d-none d-lg-table-cell">{{ run.trigger }}</td>
+          <td>{{ run.created_count }}</td>
+          <td>{{ run.updated_count }}</td>
+          <td class="d-none d-md-table-cell">{{ run.total_articles }}</td>
+          <td class="d-none d-md-table-cell">{% if run.duration_seconds is not None %}{{ run.duration_seconds|floatformat:1 }}s{% else %}<span class="text-muted">—</span>{% endif %}</td>
+          <td class="d-none d-lg-table-cell">{{ run.errors|length }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="text-muted small">No refresh runs recorded yet.</p>
+    {% endif %}
+
+    {% if latest_summary %}
+    <div class="alert alert-{{ latest_tone }} alert-dismissible fade show mt-3" role="alert" data-testid="refresh-alert">
+      <div class="d-flex w-100 gap-2">
+        <div class="flex-1">
+          <h4 class="alert-heading">Latest refresh {{ latest_summary.status|title }}</h4>
+          <div class="alert-description">
+            <strong>{{ latest_summary.created_count }}</strong> new article(s), <strong>{{ latest_summary.updated_count }}</strong> existing. <strong>{{ latest_summary.total_articles }}</strong> total article(s).
+            {% if latest_summary.errors_count %}<strong>{{ latest_summary.errors_count }}</strong> feed(s) had errors.{% endif %}
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/sources.js' %}" defer></script>
+{% endblock %}

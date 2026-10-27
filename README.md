@@ -37,10 +37,14 @@ The system ships with:
   never creates duplicates
 - **Per-feed fault isolation** — if one source is down or rate-limiting, the
   rest still load and the user is told exactly which one failed
-- **Search and filtering** across headlines, summaries, and sources
-- **Bookmarking** to save articles for later
-- **Dashboard analytics** — article counts, saved totals, and a per-source
-  breakdown
+- **Search and filtering** across headlines, summaries, sources, topics, and
+  saved/unread state, with search suggestions
+- **Bookmarking and read tracking** stored per browser session
+- **Source health dashboard** for feed status, article totals, and refresh runs
+- **Exports and integrations** via CSV, XLSX, RSS, and a JSON articles API
+- **Dashboard analytics** for article counts, trending stories, topic mix, and
+  source breakdown
+- **Installable PWA** with an offline fallback and theme settings
 
 ---
 
@@ -48,30 +52,39 @@ The system ships with:
 
 ### AI News Feed
 - Aggregates 5 public RSS/Atom feeds
-- Search by headline, summary, or source
-- Filter by a specific source
-- Paginated results
-- One-click bookmark / un-bookmark
-- Manual refresh with live status reporting
+- Search by headline, summary, or source with autocomplete suggestions
+- Filter by source, topic, date range, saved state, and read state
+- List or grid view, paginated results
+- One-click bookmark / un-bookmark and read / unread
+- Manual refresh with status reporting and a 60-second cooldown
+- CSV, XLSX, RSS, and JSON export endpoints
 
 ### Dashboard
-- Cached article count and active source count
-- Saved-article total
-- User and Info record totals
-- Latest 6 headlines
-- Per-source article breakdown with progress bars
+- Total, unread, saved, weekly, and topic counts
+- Latest headlines with bookmarking
+- Trending articles and topic mix
+- Source health summary with per-source article counts
+- Manual refresh and links to the feed and source-health pages
 
-### User Management
-- Superuser-only CRUD for user accounts
-- Create, edit, and delete users from the interface
-- Search and pagination
+### Source Health
+- Per-source status: healthy, idle, failing, partial, or running
+- Article totals and latest article timestamps
+- Recent refresh runs with trigger, counts, duration, and errors
+- Manual refresh with inline status alerts
+
+### Public Access
+- No sign-in wall — the dashboard and news feed are public
+- Bookmarks are stored per browser session (no account needed)
+- No admin panel or sign-in surface is exposed
 
 ### Security
-- Login required for every page
-- Superuser gate on user management
-- Rate limiting — locks an account out for 1 minute after 5 failed attempts
-- CSRF protection on all state-changing requests
-- Password strength validation on registration
+- Public read-only pages — no login required
+- No admin panel or sign-in surface is exposed
+- Refresh cooldown — successful/partial refreshes are throttled to once every
+  60 seconds; a running refresh returns `409`
+- CSRF protection on all state-changing requests, including session-based
+  bookmark and read actions
+- Session-based bookmarks and read state, no account data collected
 
 ---
 
@@ -83,49 +96,52 @@ The system ships with:
 | Database | MySQL / MariaDB (`bsitcrud`) |
 | Frontend | Tabler UI, Bootstrap 5.3.7, Font Awesome 6.5.1 |
 | Feed parsing | Python standard library only (`urllib` + `xml.etree`) |
-| Excel export | openpyxl 3.1.5 |
+| Excel export | Hand-built OOXML package (`zipfile` + XML) |
+| PWA | Service worker + web app manifest |
 
 > The feed reader deliberately uses **no third-party parsing library** — only
-> `urllib.request` and `xml.etree.ElementTree` from the standard library — so
-> the project keeps a minimal dependency footprint.
+> `urllib.request` and `xml.etree.ElementTree` from the standard library — and
+> the XLSX exporter writes OpenXML directly, keeping the runtime dependencies
+> to Django and the MySQL driver.
 
 ---
 
 ## Project Structure
 
 ```
-mj_django/
+BSIT3A-DJANGO-Hermes-AI-Agent/
 ├── manage.py
 ├── requirements.txt
-├── pytest.ini
 ├── mysite/                 # project configuration
 │   ├── settings.py
 │   ├── urls.py
-│   ├── views.py
+│   ├── error_views.py
 │   └── wsgi.py
 ├── apps/
-│   ├── core/               # authentication & dashboard
-│   ├── users/              # user management CRUD
-│   ├── info/               # personal information CRUD
+│   ├── core/               # public dashboard
+│   ├── users/              # legacy CRUD app (installed, not routed)
+│   ├── info/               # legacy CRUD app (installed, not routed)
 │   └── news/               # AI news aggregator
 │       ├── feeds.py        # RSS/Atom fetching & normalisation
-│       ├── models.py       # Article model
-│       ├── views.py        # feed, refresh, bookmark views
+│       ├── classification.py
+│       ├── services.py     # refresh locking and run tracking
+│       ├── health.py       # source health views
+│       ├── exporters.py    # CSV/XLSX
+│       ├── models.py       # Article, Topic, RefreshRun
+│       ├── views.py        # feed, refresh, bookmark, API views
 │       └── migrations/
 ├── templates/
-│   ├── auth/               # login & registration
-│   ├── news/               # news feed page
-│   ├── theme/              # base layout, sidebar, footer
-│   ├── users/              # user list
-│   ├── info.html
+│   ├── news/               # feed, source health, offline
+│   ├── theme/              # base layout, topbar, footer, settings
+│   ├── errors/             # custom 404/500
 │   └── home.html           # dashboard
-├── sql/
-│   ├── bsitcrud.sql        # database dump (schema + data)
-│   └── README.md           # import / export guide
-└── static/
-    ├── css/app-theme.css   # custom design system
-    ├── js/
-    └── libs/
+├── static/
+│   ├── css/                # Tabler + custom design system
+│   ├── js/                 # feed, dashboard, PWA, theme scripts
+│   ├── icons/              # app icons
+│   ├── manifest.webmanifest
+│   └── sw.js
+└── sql/                    # optional database dump and import guide
 ```
 
 ---
@@ -175,20 +191,23 @@ mysql -u root bsitcrud < sql/bsitcrud.sql
 
 ### 5. Configure the database connection
 
-Edit `mysite/settings.py` to match your local MySQL credentials:
+The defaults match a local XAMPP MySQL install. Override them with environment
+variables when needed:
 
-```python
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'bsitcrud',
-        'USER': 'root',
-        'PASSWORD': '',
-        'HOST': 'localhost',
-        'PORT': '3306',
-    }
-}
-```
+| Variable | Default |
+| --- | --- |
+| `DB_NAME` | `bsitcrud` |
+| `DB_USER` | `root` |
+| `DB_PASSWORD` | empty |
+| `DB_HOST` | `localhost` |
+| `DB_PORT` | `3306` |
+
+`DJANGO_DEBUG`, `DJANGO_SECRET_KEY`, and `DJANGO_ALLOWED_HOSTS` are also read
+from the environment. Set `DJANGO_DEBUG=0` for production; that enables HTTPS
+redirects, secure session/CSRF cookies, and HSTS. Tune it with
+`DJANGO_SECURE_SSL_REDIRECT`, `DJANGO_SECURE_HSTS_SECONDS`,
+`DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS`, and `DJANGO_SECURE_HSTS_PRELOAD` when
+running behind a proxy.
 
 ### 6. Apply migrations
 
@@ -196,24 +215,24 @@ DATABASES = {
 python manage.py migrate
 ```
 
-### 7. Create an administrator account
-
-```bash
-python manage.py createsuperuser
-```
-
-### 8. Run the development server
+### 7. Run the development server
 
 ```bash
 python manage.py runserver
 ```
 
-Open <http://127.0.0.1:8000/> and sign in.
+Open <http://127.0.0.1:8000/> — the dashboard is public, no sign-in needed.
 
-### 9. Load the news
+### 8. Load the news
 
-Go to **AI News** in the sidebar and click **Refresh feeds**. The first run
-will pull around 95 articles from the configured sources.
+Go to **AI News** in the top navigation and click **Refresh feeds**. The first
+run pulls the latest articles from all configured sources.
+
+### 9. Run the test suite
+
+```bash
+python manage.py test
+```
 
 ---
 
@@ -221,13 +240,12 @@ will pull around 95 articles from the configured sources.
 
 | Page | Path | Access |
 | --- | --- | --- |
-| Login | `/` | Public |
-| Register | `/register/` | Public |
-| Dashboard | `/home/` | Logged in |
-| AI News | `/news/` | Logged in |
-| Info | `/info/` | Logged in |
-| Users | `/users/` | Superuser only |
-| Admin | `/admin/` | Superuser only |
+| Dashboard | `/` | Public |
+| AI News | `/news/` | Public |
+| Source health | `/news/sources/` | Public |
+| Articles API | `/news/api/articles/` | Public |
+| RSS | `/news/rss/` | Public |
+| CSV / XLSX export | `/news/export/csv/`, `/news/export/xlsx/` | Public |
 
 ---
 
@@ -235,10 +253,19 @@ will pull around 95 articles from the configured sources.
 
 - Refresh is on demand rather than scheduled, so the system never hammers a
   public feed without being asked.
+- Successful and partial refreshes have a 60-second cooldown; a refresh that is
+  already running returns `409`, and a cooldown response returns `429` with a
+  `Retry-After` header.
 - VentureBeat rate-limits aggressively (HTTP 429). When this happens the
   refresh reports a **partial success** listing the failed source rather than
   failing outright.
 - Feed sources are configured in `apps/news/feeds.py`.
+- The service worker caches static assets and an offline page; bump the cache
+  version in `static/sw.js` after changing static files.
+- `manage.py check --deploy` still warns about the development secret key and
+  the optional HSTS subdomain/preload flags. Set `DJANGO_SECRET_KEY` to a long
+  random value and enable those HSTS flags before deployment; `DEBUG=0` enables
+  the HTTPS, HSTS, and secure-cookie defaults.
 
 ---
 

@@ -2,30 +2,47 @@
 {% load static %}
 {% block extra_css %}
 <link href="{% static 'css/cosmic-hero.css' %}?v=5" rel="stylesheet"/>
+<link href="{% static 'css/dashboard.css' %}?v=3" rel="stylesheet"/>
 {% endblock %}
 {% block content %}
-<div class="container-xl">
+<div class="container-xl dash-page">
 
-  <!-- PAGE HEADER -->
-  <div class="page-header d-print-none" aria-label="Page header">
-    <div class="container-xl">
-      <div class="row align-items-center">
-        <div class="col">
-          <div class="page-pretitle">Hermes Intelligence Feed</div>
-          <h2 class="page-title mb-0 d-none d-md-block">Dashboard</h2>
-          <h2 class="page-title mb-0 d-md-none">Dashboard</h2>
-        </div>
-        <div class="col-auto">
-          <a href="{% url 'news:news_list' %}" class="btn btn-primary">
-            <i class="fas fa-robot me-1"></i> Open AI News
-          </a>
-        </div>
-      </div>
+  <!-- CSRF token rendered once so the csrftoken cookie exists for fetch() -->
+  <div class="d-none" aria-hidden="true">{% csrf_token %}</div>
+
+  {# ------------------------------------------------------------------ #}
+  {# 1. PAGE HEADER                                                      #}
+  {# ------------------------------------------------------------------ #}
+  <header class="dash-header d-print-none">
+    <div class="dash-header-text">
+      <p class="dash-pretitle">Overview</p>
+      <h1 class="dash-title">Dashboard</h1>
     </div>
-  </div>
-  <br>
+    <div class="dash-header-actions">
+      <span class="dash-live-chip" {% if not last_updated %}data-live-idle="1"{% endif %}>
+        <span class="dash-live-dot" aria-hidden="true"></span>
+        {% if last_updated %}
+          <span>Updated&nbsp;</span>
+          <time data-relative datetime="{{ last_updated|date:'c' }}" title="{{ last_updated }}">{{ last_updated|timesince }} ago</time>
+        {% else %}
+          <span>Awaiting first sync</span>
+        {% endif %}
+      </span>
+      <button type="button" id="dashboardRefresh" class="btn btn-secondary dash-refresh" data-refresh-url="{% url 'news:news_refresh' %}">
+        <i class="fas fa-rotate me-1" aria-hidden="true"></i> Refresh feeds
+      </button>
+      <a href="{% url 'news:news_list' %}" class="btn btn-primary">
+        <i class="fas fa-robot me-1" aria-hidden="true"></i> Open AI News
+      </a>
+      <a href="{% url 'news:sources_page' %}" class="btn btn-ghost-secondary d-none d-sm-inline-flex">
+        <i class="fas fa-server me-1" aria-hidden="true"></i> Sources
+      </a>
+    </div>
+  </header>
 
-  <!-- HERMES AGENT COSMIC HERO : live procedural galaxy + model orbit -->
+  {# ------------------------------------------------------------------ #}
+  {# 2. HERO BAND — live cosmic galaxy restored from git HEAD            #}
+  {# ------------------------------------------------------------------ #}
   <div class="card hermes-orbit-card mb-3">
     <div class="hermes-cosmos" id="cosmos-hero">
       <canvas id="cosmos-canvas" aria-hidden="true"></canvas>
@@ -148,161 +165,304 @@
     </div>
   </div>
 
-  <!-- MODEL COVERAGE CARDS -->
-  <div id="model-coverage" class="row row-deck row-cards mb-3">
-    {% for m in model_stats %}
-      <div class="col-sm-6 col-lg-4 col-xl-2">
-        <div class="card model-card">
-          <div class="card-body">
-            <div class="d-flex align-items-center gap-2 mb-1">
-              <span class="model-dot" style="background: {{ m.color }}"></span>
-              <span class="fw-medium">{{ m.label }}</span>
-            </div>
-            <div class="h2 mb-1">{{ m.total }}</div>
-            <div class="text-muted small mb-2">{{ m.desc }}</div>
-            <a href="{% url 'news:news_list' %}?q={{ m.query }}" class="btn btn-sm btn-ghost-secondary w-100">
-              View news <i class="fas fa-arrow-right ms-1"></i>
-            </a>
-          </div>
-        </div>
-      </div>
-    {% empty %}
-      <div class="col-12">
-        <p class="text-muted mb-0">No model data yet.</p>
-      </div>
-    {% endfor %}
-  </div>
+  {# ------------------------------------------------------------------ #}
+  {# 3. STAT TILES                                                       #}
+  {# ------------------------------------------------------------------ #}
+  <section class="dash-stats" aria-label="Key numbers">
+    <a class="dash-stat" href="{% url 'news:news_list' %}">
+      <span class="dash-stat-label">Total articles</span>
+      <span class="dash-stat-value">{{ total_articles }}</span>
+      <span class="dash-stat-meta">+{{ articles_today }} today · {{ articles_week }} this week</span>
+    </a>
+    <a class="dash-stat" href="{% url 'news:sources_page' %}">
+      <span class="dash-stat-label">Sources</span>
+      <span class="dash-stat-value">{{ feeds_ok }}<span class="dash-stat-sub">/{{ configured_sources }}</span></span>
+      <span class="dash-stat-meta">feeds healthy{% if feeds_error %} · {{ feeds_error }} erroring{% endif %}</span>
+    </a>
+    <a class="dash-stat" href="{% url 'news:news_list' %}?unread=1">
+      <span class="dash-stat-label">Unread</span>
+      <span class="dash-stat-value">{{ unread_total }}</span>
+      <span class="dash-stat-meta">{{ read_total }} read so far</span>
+    </a>
+    <a class="dash-stat" href="{% url 'news:news_list' %}?saved=1">
+      <span class="dash-stat-label">Saved</span>
+      <span class="dash-stat-value">{{ saved_articles }}</span>
+      <span class="dash-stat-meta">bookmarked stories</span>
+    </a>
+    <a class="dash-stat" href="{% url 'news:news_list' %}?sort=newest">
+      <span class="dash-stat-label">This week</span>
+      <span class="dash-stat-value">{{ articles_week }}</span>
+      <span class="dash-stat-meta">fetched in 7 days</span>
+    </a>
+    <a class="dash-stat" href="{% url 'news:news_list' %}">
+      <span class="dash-stat-label">Topics</span>
+      <span class="dash-stat-value">{{ topic_count }}</span>
+      <span class="dash-stat-meta">tracked themes</span>
+    </a>
+  </section>
 
-  <!-- STAT CARDS -->
-  <div class="row row-deck row-cards mb-3">
-    <div class="col-sm-6 col-lg-3">
-      <div class="card">
-        <div class="card-body">
-          <div class="d-flex align-items-center">
-            <div class="subheader">Cached articles</div>
-          </div>
-          <div class="h1 mb-3">{{ total_articles }}</div>
-          <div class="text-muted">
-            <i class="fas fa-rss me-1"></i><span>{{ total_sources }} feeds</span>
-          </div>
-        </div>
+  {# ------------------------------------------------------------------ #}
+  {# 3b. MODEL COVERAGE — original model + platform logos                #}
+  {# ------------------------------------------------------------------ #}
+  <section class="dash-model-section" id="model-coverage" aria-labelledby="dash-models-title">
+    <div class="dash-section-head">
+      <div>
+        <p class="dash-pretitle mb-1">Models</p>
+        <h2 class="dash-section-title" id="dash-models-title">Coverage by platform</h2>
       </div>
+      <p class="dash-section-sub">Every model with its originating platform and live article count.</p>
     </div>
+    <div class="dash-model-grid">
+      {% for m in model_stats %}
+        <a class="dash-model-card" href="{% url 'news:news_list' %}?q={{ m.query }}" style="--model-color: {{ m.color }}" title="{{ m.desc }}" aria-label="{{ m.label }} by {{ m.platform_name }} — {{ m.total }} articles. View news.">
+          <span class="dash-model-card-top">
+            <span class="dash-model-origin">
+              <span class="dash-model-origin-logo"><img src="{% static m.platform_logo %}" alt="" loading="lazy"{% if m.platform_mono %} class="dash-brand-mono"{% endif %}></span>
+              {{ m.platform_name }}
+            </span>
+            <span class="dash-model-count">{{ m.total }}</span>
+          </span>
+          <span class="dash-model-main">
+            <span class="dash-model-logo"><img src="{% static m.logo %}" alt="" loading="lazy"{% if m.mono %} class="dash-brand-mono"{% endif %}></span>
+            <span class="dash-model-copy">
+              <span class="dash-model-name">{{ m.label }}</span>
+              <span class="dash-model-desc">{{ m.desc }}</span>
+            </span>
+          </span>
+          <span class="dash-model-action">View news <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
+        </a>
+      {% empty %}
+        <p class="dash-model-empty">No model data yet. Run a refresh to classify articles.</p>
+      {% endfor %}
+    </div>
+  </section>
 
-    <div class="col-sm-6 col-lg-3">
-      <div class="card">
-        <div class="card-body">
-          <div class="subheader">Saved for later</div>
-          <div class="h1 mb-3">{{ saved_articles }}</div>
-          <div class="text-muted">
-            <i class="fas fa-bookmark me-1"></i><span>Bookmarked stories</span>
-          </div>
+  {# ------------------------------------------------------------------ #}
+  {# 4. MAIN GRID — headlines / trending + topic mix                     #}
+  {# ------------------------------------------------------------------ #}
+  <div class="dash-grid">
+
+    <section class="card dash-card" aria-labelledby="dash-latest-title">
+      <div class="card-header">
+        <h2 class="card-title" id="dash-latest-title">Latest headlines</h2>
+        <div class="card-actions">
+          <a href="{% url 'news:news_list' %}" class="btn btn-sm btn-outline-secondary">
+            View all <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i>
+          </a>
         </div>
       </div>
-    </div>
-
-    <div class="col-sm-6 col-lg-3">
-      <div class="card">
-        <div class="card-body">
-          <div class="subheader">Total users</div>
-          <div class="h1 mb-3">{{ total_users }}</div>
-          <div class="text-muted">
-            <i class="fas fa-users me-1"></i><span>Registered accounts</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-sm-6 col-lg-3">
-      <div class="card">
-        <div class="card-body">
-          <div class="subheader">Info records</div>
-          <div class="h1 mb-3">{{ total_infos }}</div>
-          <div class="text-muted">
-            <i class="fas fa-address-card me-1"></i><span>Stored entries</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="row row-deck row-cards">
-    <!-- LATEST HEADLINES -->
-    <div class="col-lg-8">
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">
-            <i class="fas fa-newspaper me-1"></i> Latest headlines
-          </h3>
-          <div class="card-actions">
-            {% if last_updated %}
-              <span class="text-muted small">Updated {{ last_updated|timesince }} ago</span>
-            {% endif %}
-          </div>
-        </div>
-        <div class="list-group list-group-flush">
-          {% for a in latest_articles %}
-            <div class="list-group-item">
-              <div class="d-flex align-items-start gap-2">
-                <div class="flex-fill">
-                  <div class="mb-1">
-                    <span class="badge bg-purple-lt text-purple">{{ a.source }}</span>
-                  </div>
-                  <a href="{{ a.url }}" target="_blank" rel="noopener noreferrer"
-                     class="text-body fw-medium text-decoration-none">{{ a.title }}</a>
-                  {% if a.published_at %}
-                    <div class="text-muted small mt-1">{{ a.published_at|timesince }} ago</div>
+      <div class="dash-headlines">
+        {% for a in latest_articles %}
+          <article class="dash-headline{% if a.is_read %} is-read{% endif %}">
+            <div class="dash-headline-main">
+              <div class="dash-headline-meta">
+                <span class="dash-source-chip">{{ a.source }}</span>
+                {% if a.published_at %}
+                  <time data-relative datetime="{{ a.published_at|date:'c' }}" title="{{ a.published_at }}">{{ a.published_at|timesince }} ago</time>
+                {% endif %}
+                {% if a.is_read %}<span class="dash-read-flag">Read</span>{% endif %}
+              </div>
+              <h3 class="dash-headline-title">
+                <a href="{% url 'news:news_open' a.pk %}" target="_blank" rel="noopener">{{ a.title }}</a>
+              </h3>
+              {% if a.summary %}
+                <p class="dash-headline-summary">{{ a.summary|striptags|truncatechars:220 }}</p>
+              {% endif %}
+              {% if a.topics.all %}
+                <div class="dash-topic-row">
+                  {% for t in a.topics.all %}
+                    {% if forloop.counter <= 2 %}
+                      <a class="dash-topic-chip" href="{% url 'news:news_list' %}?topic={{ t.slug }}" style="--topic-color: {{ t.color }}">{{ t.name }}</a>
+                    {% endif %}
+                  {% endfor %}
+                  {% if a.topics.count > 2 %}
+                    <span class="dash-topic-more">+{{ a.topics.count|add:"-2" }}</span>
                   {% endif %}
                 </div>
-                {% if a.is_saved %}
-                  <i class="fas fa-bookmark text-yellow"></i>
-                {% endif %}
-              </div>
+              {% endif %}
             </div>
-          {% empty %}
-            <div class="list-group-item">
-              <div class="empty py-4">
-                <div class="empty-icon"><i class="fas fa-robot fa-2x text-muted"></i></div>
-                <p class="empty-title">No articles yet</p>
-                <p class="empty-subtitle">Refresh the feeds to populate your dashboard.</p>
-                <div class="empty-action">
-                  <a href="{% url 'news:news_list' %}" class="btn btn-primary">
-                    <i class="fas fa-rotate me-1"></i> Go to AI News
-                  </a>
-                </div>
-              </div>
+            <div class="dash-headline-actions">
+              <button type="button" class="dash-save-btn"
+                      data-save-url="{% url 'news:news_toggle_save' a.pk %}"
+                      data-id="{{ a.pk }}"
+                      data-saved="{{ a.is_saved|yesno:'1,0' }}"
+                      data-title="{{ a.title|striptags|truncatechars:60 }}"
+                      aria-pressed="{{ a.is_saved|yesno:'true,false' }}"
+                      aria-label="{% if a.is_saved %}Remove bookmark{% else %}Bookmark{% endif %}: {{ a.title|striptags|truncatechars:60 }}"
+                      title="{% if a.is_saved %}Remove bookmark{% else %}Bookmark{% endif %}">
+                <i class="fas fa-bookmark" aria-hidden="true"></i>
+              </button>
             </div>
-          {% endfor %}
-        </div>
+          </article>
+        {% empty %}
+          <div class="dash-empty">
+            <div class="dash-empty-icon"><i class="fas fa-satellite-dish" aria-hidden="true"></i></div>
+            <p class="dash-empty-title">No headlines yet</p>
+            <p class="dash-empty-sub">Run a refresh to pull every configured feed into Hermes.</p>
+            <button type="button" class="btn btn-primary dash-refresh" data-refresh-url="{% url 'news:news_refresh' %}">
+              <i class="fas fa-rotate me-1" aria-hidden="true"></i> Refresh feeds now
+            </button>
+          </div>
+        {% endfor %}
       </div>
-    </div>
+    </section>
 
-    <!-- SOURCE BREAKDOWN -->
-    <div class="col-lg-4">
-      <div class="card">
+    <div class="dash-side">
+      <section class="card dash-card" aria-labelledby="dash-trending-title">
         <div class="card-header">
-          <h3 class="card-title">
-            <i class="fas fa-chart-simple me-1"></i> By source
-          </h3>
+          <h2 class="card-title" id="dash-trending-title">Trending now</h2>
         </div>
-        <div class="card-body">
-          {% for row in latest_sources %}
-            <div class="mb-3">
-              <div class="d-flex justify-content-between mb-1">
-                <span class="text-muted">{{ row.source }}</span>
-                <span class="fw-medium">{{ row.total }}</span>
+        <div class="dash-trending">
+          {% for a in trending_articles %}
+            <article class="dash-trend-item">
+              <div class="dash-trend-main">
+                <div class="dash-headline-meta">
+                  <span class="dash-source-chip">{{ a.source }}</span>
+                  <span class="dash-views"><i class="fas fa-eye me-1" aria-hidden="true"></i>{{ a.view_count }}</span>
+                </div>
+                <h3 class="dash-trend-title">
+                  <a href="{% url 'news:news_open' a.pk %}" target="_blank" rel="noopener">{{ a.title }}</a>
+                </h3>
               </div>
-              <div class="progress progress-sm">
-                <div class="progress-bar bg-purple" style="width: {% widthratio row.total total_articles 100 %}%"
-                     role="progressbar" aria-valuenow="{{ row.total }}" aria-valuemin="0" aria-valuemax="{{ total_articles }}"></div>
-              </div>
-            </div>
+              <button type="button" class="dash-save-btn dash-save-btn-sm"
+                      data-save-url="{% url 'news:news_toggle_save' a.pk %}"
+                      data-id="{{ a.pk }}"
+                      data-saved="{{ a.is_saved|yesno:'1,0' }}"
+                      data-title="{{ a.title|striptags|truncatechars:60 }}"
+                      aria-pressed="{{ a.is_saved|yesno:'true,false' }}"
+                      aria-label="{% if a.is_saved %}Remove bookmark{% else %}Bookmark{% endif %}: {{ a.title|striptags|truncatechars:60 }}"
+                      title="{% if a.is_saved %}Remove bookmark{% else %}Bookmark{% endif %}">
+                <i class="fas fa-bookmark" aria-hidden="true"></i>
+              </button>
+            </article>
           {% empty %}
-            <p class="text-muted mb-0">No sources yet — refresh the AI news feed.</p>
+            <div class="dash-empty dash-empty-sm">
+              <p class="dash-empty-title">Nothing trending yet</p>
+              <p class="dash-empty-sub">Open a few stories and the most-read ones land here.</p>
+              <a href="{% url 'news:news_list' %}" class="btn btn-outline-secondary btn-sm">Browse AI news</a>
+            </div>
           {% endfor %}
         </div>
-      </div>
+      </section>
+
+      <section class="card dash-card" aria-labelledby="dash-topics-title">
+        <div class="card-header">
+          <h2 class="card-title" id="dash-topics-title">Topic mix</h2>
+        </div>
+        <div class="dash-topics">
+          {% for t in topic_stats %}
+            <a class="dash-topic-line" href="{% url 'news:news_list' %}?topic={{ t.slug }}" style="--topic-color: {{ t.color }}" title="{{ t.description|default:t.name }}">
+              <span class="dash-topic-name">{{ t.name }}</span>
+              <span class="dash-topic-total">{{ t.total }}</span>
+              <span class="dash-topic-bar" role="img" aria-label="{{ t.share }}% of all articles">
+                <span class="dash-topic-bar-fill" style="width: {{ t.share }}%"></span>
+              </span>
+            </a>
+          {% empty %}
+            <div class="dash-empty dash-empty-sm">
+              <p class="dash-empty-title">No topics yet</p>
+              <p class="dash-empty-sub">Topics appear once articles are classified.</p>
+            </div>
+          {% endfor %}
+        </div>
+      </section>
     </div>
+  </div>
+
+  {# ------------------------------------------------------------------ #}
+  {# 5. LOWER GRID — refresh run / source health                         #}
+  {# ------------------------------------------------------------------ #}
+  <div class="dash-grid dash-grid-lower">
+
+    <section class="card dash-card" aria-labelledby="dash-run-title">
+      <div class="card-header">
+        <h2 class="card-title" id="dash-run-title">Latest refresh</h2>
+        {% if latest_run %}
+          <span class="badge dash-run-badge dash-run-{{ latest_run.status }}">{{ latest_run.status }}</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        {% if latest_run %}
+          <div class="dash-run-times">
+            <span>Started <time data-relative datetime="{{ latest_run.started_at|date:'c' }}" title="{{ latest_run.started_at }}">{{ latest_run.started_at|timesince }} ago</time></span>
+            {% if latest_run.finished_at %}
+              <span>Finished <time data-relative datetime="{{ latest_run.finished_at|date:'c' }}" title="{{ latest_run.finished_at }}">{{ latest_run.finished_at|timesince }} ago</time></span>
+            {% endif %}
+          </div>
+          <dl class="dash-run-stats">
+            <div><dt>Created</dt><dd>{{ latest_run.created_count }}</dd></div>
+            <div><dt>Updated</dt><dd>{{ latest_run.updated_count }}</dd></div>
+            <div><dt>Total</dt><dd>{{ latest_run.total_articles }}</dd></div>
+            <div><dt>Duration</dt><dd>{% if latest_run.duration_seconds is not None %}{{ latest_run.duration_seconds|floatformat:1 }}s{% else %}—{% endif %}</dd></div>
+            <div><dt>Errors</dt><dd>{{ latest_run.errors|length }}</dd></div>
+          </dl>
+          {% if latest_run.errors %}
+            <details class="dash-run-errors">
+              <summary>{{ latest_run.errors|length }} feed error{{ latest_run.errors|length|pluralize }}</summary>
+              <ul>
+                {% for e in latest_run.errors %}
+                  <li><strong>{{ e.source|default:e.key|default:"Feed" }}</strong> — {{ e.error }}</li>
+                {% endfor %}
+              </ul>
+            </details>
+          {% endif %}
+        {% else %}
+          <p class="dash-run-none">
+            No refresh has run yet. Hit <strong>Run refresh</strong> below and Hermes
+            will pull every configured feed, de-duplicate the results and file them
+            under their topics.
+          </p>
+        {% endif %}
+        <button type="button" id="dashboardRefreshCard" class="btn btn-primary w-100 dash-refresh" data-refresh-url="{% url 'news:news_refresh' %}">
+          <i class="fas fa-rotate me-1" aria-hidden="true"></i> Run refresh
+        </button>
+      </div>
+    </section>
+
+    <section class="card dash-card" aria-labelledby="dash-health-title">
+      <div class="card-header">
+        <h2 class="card-title" id="dash-health-title">Source health</h2>
+        <div class="card-actions">
+          <a href="{% url 'news:sources_page' %}" class="btn btn-sm btn-outline-secondary">View all sources</a>
+        </div>
+      </div>
+      <div class="card-body">
+        <ul class="dash-health">
+          {% for s in source_health|slice:':8' %}
+            <li class="dash-health-item" {% if s.error %}title="{{ s.error|striptags|truncatechars:160 }}"{% endif %}>
+              <span class="dash-health-dot dash-health-{{ s.status }}" aria-hidden="true"></span>
+              <span class="dash-health-text">
+                <span class="dash-health-status dash-health-text-{{ s.status }}">{{ s.status|title }}</span>
+                <span class="dash-health-name">{{ s.name }}</span>
+              </span>
+              <span class="dash-health-count">{{ s.total }}</span>
+            </li>
+          {% empty %}
+            <li class="dash-empty dash-empty-sm"><p class="dash-empty-sub mb-0">No sources configured.</p></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+  </div>
+
+  {# ------------------------------------------------------------------ #}
+  {# 6. FOOTER NOTE                                                      #}
+  {# ------------------------------------------------------------------ #}
+  <div class="dash-footnote d-print-none">
+    <span>
+      <a href="{% url 'news:news_rss' %}">RSS</a>
+      <span aria-hidden="true"> · </span>
+      <a href="{% url 'news:news_api' %}">API</a>
+      <span aria-hidden="true"> · </span>
+      <a href="{% url 'news:sources_page' %}">Sources</a>
+    </span>
+    <span>
+      {% if last_updated %}
+        Last updated <time data-relative datetime="{{ last_updated|date:'c' }}" title="{{ last_updated }}">{{ last_updated|timesince }} ago</time>
+      {% else %}
+        No data yet — run a refresh.
+      {% endif %}
+    </span>
   </div>
 
 </div>
@@ -315,4 +475,5 @@
   } catch (e) { window.HERMES_MODELS = []; }
 </script>
 <script src="{% static 'js/cosmic-hero.js' %}?v=5"></script>
+<script src="{% static 'js/dashboard.js' %}?v=2" defer></script>
 {% endblock %}
