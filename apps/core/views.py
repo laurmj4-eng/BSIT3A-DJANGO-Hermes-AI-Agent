@@ -142,6 +142,125 @@ def _model_stats(articles):
     return stats
 
 
+TRENDING_WINDOW_HOURS = 72
+TRENDING_EXCLUDED_FEEDS = {'arxiv_cs_ai'}
+TRENDING_OFFICIAL_FEEDS = {
+    'openai_news',
+    'anthropic_news',
+    'google_ai_blog',
+    'deepmind_blog',
+    'meta_ai_news',
+    'mistral_ai',
+    'huggingface_blog',
+    'freebuff_blog',
+    'opencode_releases',
+    'ollama_blog',
+}
+TRENDING_PRESS_FEEDS = {
+    'techcrunch_ai',
+    'verge_ai',
+    'venturebeat_ai',
+    'google_ai',
+    'google_free_models',
+    'mit_news_ai',
+}
+
+
+def _topic_counts(start, end):
+    """Article counts per topic inside a half-open time window."""
+    window = Article.objects.filter(
+        Q(published_at__gte=start, published_at__lt=end)
+        | Q(published_at__isnull=True, fetched_at__gte=start, fetched_at__lt=end)
+    )
+    return {
+        row['topics__slug']: row['n']
+        for row in window.exclude(topics__isnull=True)
+        .values('topics__slug')
+        .annotate(n=Count('id'))
+        if row['topics__slug']
+    }
+
+
+def _trending_articles(now, saved_ids, read_ids, limit=5):
+    """Rank stories by topic *surge* + reads, never by last click.
+
+    A public dashboard has no per-article traffic, so trending compares the
+    last 24h with the 48h before it: topics accelerating right now win.
+    Official model/tool feeds get a boost, research-paper dumps are skipped.
+    """
+    day_start = now - timedelta(hours=24)
+    baseline_start = now - timedelta(hours=72)
+    end = now + timedelta(seconds=1)
+    recent = _topic_counts(day_start, end)
+    prior = _topic_counts(baseline_start, day_start)
+
+    window_start = now - timedelta(hours=TRENDING_WINDOW_HOURS)
+    candidates = (
+        Article.objects.filter(
+            Q(published_at__gte=window_start)
+            | Q(published_at__isnull=True, fetched_at__gte=window_start)
+        )
+        .exclude(feed_key__in=TRENDING_EXCLUDED_FEEDS)
+        .prefetch_related('topics')
+        .order_by('-fetched_at')[:300]
+    )
+
+    scored = []
+    for article in candidates:
+        topics = list(article.topics.all())
+        surge = max(
+            (
+                min((recent.get(topic.slug, 0) + 0.5) / (prior.get(topic.slug, 0) / 2 + 1), 4)
+                for topic in topics
+            ),
+            default=0,
+        )
+        if article.feed_key in TRENDING_OFFICIAL_FEEDS:
+            source_boost = 10
+        elif article.feed_key in TRENDING_PRESS_FEEDS:
+            source_boost = 4
+        else:
+            source_boost = 0
+        age_hours = max(
+            (now - (article.published_at or article.fetched_at)).total_seconds() / 3600,
+            0,
+        )
+        score = (
+            surge * 12
+            + min(article.view_count, 25) * 2
+            + source_boost
+            - age_hours * 0.2
+        )
+        key = topics[0].slug if topics else f'feed:{article.feed_key}'
+        scored.append((score, article, key))
+
+    scored.sort(key=lambda row: row[0], reverse=True)
+
+    picked = []
+    seen_topics = set()
+    for _score, article, key in scored:
+        if key in seen_topics:
+            continue
+        picked.append(article)
+        seen_topics.add(key)
+        if len(picked) == limit:
+            break
+
+    if len(picked) < limit:
+        chosen = {article.pk for article in picked}
+        for _score, article, _key in scored:
+            if article.pk in chosen:
+                continue
+            picked.append(article)
+            if len(picked) == limit:
+                break
+
+    for article in picked:
+        article.is_saved = article.pk in saved_ids
+        article.is_read = article.pk in read_ids
+    return picked
+
+
 def _session_ids(request, key):
     """Session-stored list of article ids (ints) for ``key``."""
     raw = request.session.get(key) or []
@@ -211,16 +330,8 @@ def home(request):
         for topic in topic_rows
     ]
 
-    # Trending: viewed recently, most views first.
-    trending_articles = list(
-        articles
-        .filter(view_count__gt=0, last_viewed_at__gte=now - timedelta(days=7))
-        .prefetch_related('topics')
-        .order_by('-view_count', '-last_viewed_at')[:5]
-    )
-    for article in trending_articles:
-        article.is_saved = article.pk in saved_ids
-        article.is_read = article.pk in read_ids
+    # Trending: fresh topic surges + real reads, never "what I clicked last".
+    trending_articles = _trending_articles(now, saved_ids, read_ids)
 
     # Source health: one aggregate over stored feed keys, merged with FEEDS.
     stored = {

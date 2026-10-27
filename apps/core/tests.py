@@ -110,17 +110,35 @@ class DashboardContextTests(TestCase):
         self.assertTrue(hasattr(ctx['latest_articles'][0], 'is_saved'))
         self.assertEqual(len(ctx['latest_articles']), 3)
 
-    def test_trending_order_and_window(self):
+    def test_trending_ranks_topic_surge_and_excludes_old(self):
         response = self.client.get(reverse('dashboard'))
         trending = list(response.context['trending_articles'])
-        self.assertEqual([a.pk for a in trending], [self.new.pk, self.old.pk])
-        # An article viewed long ago is excluded.
-        stale = self._article('Stale story', 'Src C', FEEDS[0]['key'], days_ago=1, views=99)
-        stale.last_viewed_at = timezone.now() - timedelta(days=8)
-        stale.save(update_fields=['last_viewed_at'])
+        # Same topic (LLMs): the read story leads, the unread one follows.
+        self.assertEqual([a.pk for a in trending], [self.new.pk, self.mid.pk])
+
+        # A heavily viewed story outside the 72h window never trends.
+        stale = self._article(
+            'Stale story', 'Src C', FEEDS[0]['key'], days_ago=8, views=99, viewed=True
+        )
+        stale.topics.add(self.topic_a)
         response = self.client.get(reverse('dashboard'))
-        trending_ids = [a.pk for a in response.context['trending_articles']]
-        self.assertNotIn(stale.pk, trending_ids)
+        self.assertNotIn(stale.pk, [a.pk for a in response.context['trending_articles']])
+
+        # A fresh burst on another topic outranks a single read story.
+        burst = [
+            self._article(f'Agent release {i}', 'Src C', FEEDS[2]['key'], days_ago=0)
+            for i in range(3)
+        ]
+        for article in burst:
+            article.topics.add(self.topic_b)
+
+        response = self.client.get(reverse('dashboard'))
+        ids = [a.pk for a in response.context['trending_articles']]
+        self.assertEqual(len(ids), 5)
+        # The accelerating topic leads, the steady one follows, old fill last.
+        self.assertIn(ids[0], {a.pk for a in burst})
+        self.assertEqual(ids[1], self.new.pk)
+        self.assertIn(self.mid.pk, ids)
 
     def test_source_health_and_counts(self):
         response = self.client.get(reverse('dashboard'))
