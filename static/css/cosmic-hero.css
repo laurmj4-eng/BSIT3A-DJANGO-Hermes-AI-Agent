@@ -17,7 +17,7 @@
 
 .hermes-cosmos {
   position: relative;
-  min-height: 560px;
+  min-height: 520px;
   background:
     radial-gradient(90% 120% at 78% 48%, rgba(20, 44, 82, 0.28) 0%, rgba(2, 4, 10, 0) 62%),
     #02040a;
@@ -65,12 +65,6 @@
   z-index: 5;
 }
 
-.hermes-orbit-card .page-pretitle {
-  color: #7dd3fc;
-  letter-spacing: 0.2em;
-  text-shadow: 0 0 22px rgba(56, 189, 248, 0.42);
-}
-
 .hermes-orbit-title {
   font-weight: 300;
   letter-spacing: 0.3em;
@@ -116,6 +110,17 @@
   max-width: 31rem;
   color: #a9b7cc;
   text-shadow: 0 2px 18px rgba(0, 0, 0, 0.7);
+}
+
+/* The cosmic band stays dark in both themes, so muted utility text must
+   keep the on-dark value instead of inheriting the light-theme token. */
+.hermes-cosmos .text-muted,
+.hermes-cosmos .text-secondary {
+  color: #a9b7cc !important;
+}
+
+.hermes-cosmos .cosmos-copy .small {
+  line-height: 1.5;
 }
 
 .cosmos-copy .btn-ghost-secondary {
@@ -264,7 +269,7 @@
 
 #orbit-wrap {
   position: relative;
-  height: 430px;
+  height: 400px;
   cursor: grab;
   touch-action: none;
   outline: none;
@@ -527,7 +532,16 @@
    -------------------------------------------------------------------------- */
 
 @media (max-width: 1199.98px) {
-  #orbit-wrap { height: 400px; }
+  #orbit-wrap { height: 380px; }
+}
+
+/* Touch pointers get a real 44px target on the galaxy controls. */
+@media (pointer: coarse) {
+  .cosmos-tool {
+    width: 44px;
+    height: 44px;
+    font-size: 13px;
+  }
 }
 
 @media (max-width: 991.98px) {
@@ -542,7 +556,7 @@
   .cosmos-content { padding: 1.35rem 1.2rem 2rem; }
   .cosmos-copy { padding-right: 0; }
   .cosmos-copy p { max-width: none; }
-  #orbit-wrap { height: 345px; margin-top: 0.35rem; }
+  #orbit-wrap { height: 330px; margin-top: 0.35rem; }
   .hermes-orbit-title { letter-spacing: 0.18em; }
 
   .hermes-cosmos.is-no-webgl::before {
@@ -566,7 +580,7 @@
 
   .cosmos-content { padding-top: 1rem; }
   .orbit-label { font-size: 10.5px; padding: 3px 8px 3px 7px; }
-  #orbit-wrap { height: 300px; }
+  #orbit-wrap { height: 290px; }
 
   .cosmos-speed {
     padding: 0 8px;

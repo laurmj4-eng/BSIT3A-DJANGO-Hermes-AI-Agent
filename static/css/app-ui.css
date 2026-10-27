@@ -71,6 +71,12 @@
   animation: dhSkeletonShimmer 1.5s ease-in-out infinite;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .dh-skeleton {
+    animation: none;
+  }
+}
+
 @keyframes dhSkeletonShimmer {
   0% { background-color: var(--tblr-bg-surface-secondary); }
   50% { background-color: color-mix(in srgb, var(--tblr-primary) 20%, var(--tblr-bg-surface-secondary)); }
@@ -115,6 +121,9 @@
   padding: 0;
 }
 .dh-autocomplete-list li {
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
   padding: 0.5rem 0.75rem;
   cursor: pointer;
   font-size: 0.875rem;
@@ -152,8 +161,9 @@
   width: 4rem;
   height: 4rem;
   margin: 0 auto 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--tblr-primary) 25%, var(--tblr-border-color));
   border-radius: 1rem;
-  background: var(--tblr-bg-surface-secondary);
+  background: color-mix(in srgb, var(--tblr-primary) 8%, var(--tblr-bg-surface-secondary));
   color: var(--tblr-primary);
   display: inline-flex;
   align-items: center;
@@ -161,7 +171,7 @@
   font-size: 1.5rem;
 }
 .dh-empty-state-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.25rem; }
-.dh-empty-state-sub { color: var(--tblr-muted); font-size: 0.875rem; margin-bottom: 1rem; }
+.dh-empty-state-sub { color: var(--tblr-muted); font-size: 0.875rem; line-height: 1.55; margin-bottom: 1rem; }
 .dh-empty-state-action .btn { font-size: 0.875rem; }
 
 /* Topic chip */
@@ -201,9 +211,9 @@
   font-size: 0.72rem;
   font-weight: 600;
 }
-.dh-health-badge.ok { background: color-mix(in srgb, #22c55e 12%, #fff); color: #16a34a; }
-.dh-health-badge.warn { background: color-mix(in srgb, #f59e0b 12%, #fff); color: #ea580c; }
-.dh-health-badge.down { background: color-mix(in srgb, #ef4444 12%, #fff); color: #b91c1c; }
+.dh-health-badge.ok { background: var(--dh-ok-bg); color: var(--dh-ok); }
+.dh-health-badge.warn { background: var(--dh-warn-bg); color: var(--dh-warn); }
+.dh-health-badge.down { background: var(--dh-danger-bg); color: var(--dh-danger); }
 .dh-health-badge.unknown { background: var(--tblr-bg-surface); color: var(--tblr-muted); }
 
 /* Stat tile */
@@ -232,19 +242,7 @@
   font-size: 0.875rem;
 }
 
-/* ==========================================================================
-   Custom focus-visible treatment
-   ========================================================================== */
-a:focus-visible,
-button:focus-visible,
-.chip:focus-visible,
-.nav-link:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid var(--dh-focus-ring);
-  outline-offset: 2px;
-}
+/* Focus rings live in app-theme.css so every page shares one treatment. */
 
 /* ==========================================================================
    Micro-label size guard: ensure form controls inside dh-topbar-search are at least 1rem on small screens

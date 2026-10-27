@@ -12,13 +12,14 @@
     <script src="{% static 'js/theme-init.js' %}"></script>
     <link href="{% static 'css/tabler.css' %}" rel="stylesheet"/>
     <link href="{% static 'css/tabler-themes.css' %}" rel="stylesheet"/>
-    <link href="{% static 'css/app-theme.css' %}" rel="stylesheet"/>
-    <link href="{% static 'css/app-ui.css' %}" rel="stylesheet"/>
+    <link href="{% static 'css/app-theme.css' %}?v=5" rel="stylesheet"/>
+    <link href="{% static 'css/app-ui.css' %}?v=3" rel="stylesheet"/>
     {% block extra_css %}{% endblock %}
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style>
-    @import url("https://rsms.me/inter/inter.css");
-    </style>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin/>
+    <link rel="preconnect" href="https://rsms.me"/>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css"/>
     {% block extra_head %}{% endblock %}
   </head>
 

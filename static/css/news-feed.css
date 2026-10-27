@@ -7,7 +7,7 @@
 /* Sticky filter panel on desktop only */
 .news-feed .feed-filter-card {
   position: sticky;
-  top: 4rem;
+  top: 4.75rem;
   z-index: 1020;
 }
 
@@ -23,7 +23,7 @@
 .news-feed input:focus-visible,
 .news-feed select:focus-visible,
 .news-feed textarea:focus-visible {
-  outline: 2px solid var(--tblr-primary);
+  outline: 2px solid var(--dh-focus-ring, var(--tblr-primary));
   outline-offset: 2px;
 }
 
@@ -90,6 +90,16 @@
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
 }
 
+.news-feed .feed-article:focus-within {
+  border-color: color-mix(in srgb, var(--tblr-primary) 42%, var(--tblr-border-color));
+  box-shadow: var(--tblr-shadow-lg);
+}
+
+/* Grid cards share one height so the action row stays on the same baseline. */
+.news-feed .articles-container.feed-view-grid .feed-article {
+  height: 100%;
+}
+
 .news-feed .feed-article.is-read {
   background: var(--tblr-bg-surface-secondary);
 }
@@ -113,8 +123,11 @@
   text-decoration: none;
 }
 
-.news-feed .feed-article-title a:hover {
+.news-feed .feed-article-title a:hover,
+.news-feed .feed-article-title a:focus-visible {
   color: var(--tblr-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
 }
 
 .news-feed .feed-article-summary {
@@ -123,6 +136,20 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin-bottom: 0.5rem;
+  line-height: 1.55;
+}
+
+/* "More filters" disclosure reads as a control, not body copy. */
+.news-feed #filterForm details > summary {
+  cursor: pointer;
+  color: var(--tblr-muted);
+  font-weight: 600;
+  transition: color 0.15s ease;
+}
+
+.news-feed #filterForm details > summary:hover,
+.news-feed #filterForm details > summary:focus-visible {
+  color: var(--tblr-primary);
 }
 
 .news-feed .feed-article-meta {
@@ -173,6 +200,15 @@
     width: 100%;
     margin-top: 0.25rem;
   }
+
+  .news-feed .feed-topic-chip,
+  .news-feed .dh-chip {
+    min-height: 2.5rem;
+  }
+
+  .news-feed .feed-article-title {
+    font-size: 1rem;
+  }
 }
 
 /* Topic chips inside cards */
@@ -204,10 +240,17 @@
   gap: 0.5rem;
 }
 
-/* Reduced motion */
+/* Reduced motion: stop decorative motion, keep state legible. */
 @media (prefers-reduced-motion: reduce) {
-  .news-feed * {
-    transition: none !important;
+  .news-feed .feed-article,
+  .news-feed .feed-article:hover,
+  .news-feed .feed-article:focus-within {
+    transform: none;
+    transition: none;
+  }
+
+  .news-feed .dh-skeleton,
+  .news-feed .spinner-border {
     animation: none !important;
   }
 }

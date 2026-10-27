@@ -188,7 +188,16 @@
   function initRelativeTimes() {
     if (!document.querySelector('time[data-relative]')) { return; }
     updateRelativeTimes();
-    window.setInterval(updateRelativeTimes, 60000);
+    var timer = window.setInterval(updateRelativeTimes, 60000);
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) {
+        window.clearInterval(timer);
+        timer = null;
+      } else if (!timer) {
+        updateRelativeTimes();
+        timer = window.setInterval(updateRelativeTimes, 60000);
+      }
+    });
   }
 
   /* ---------------------------------------------------------------

@@ -64,13 +64,13 @@ The system ships with:
 - Latest headlines with bookmarking
 - Trending articles and topic mix
 - Source health summary with per-source article counts
-- Manual refresh and links to the feed and source-health pages
+- Manual refresh and a link to the feed
 
 ### Source Health
 - Per-source status: healthy, idle, failing, partial, or running
 - Article totals and latest article timestamps
 - Recent refresh runs with trigger, counts, duration, and errors
-- Manual refresh with inline status alerts
+- Served as JSON APIs at `/news/sources/json/` and `/news/sources/runs/`
 
 ### Public Access
 - No sign-in wall — the dashboard and news feed are public
@@ -242,7 +242,6 @@ python manage.py test
 | --- | --- | --- |
 | Dashboard | `/` | Public |
 | AI News | `/news/` | Public |
-| Source health | `/news/sources/` | Public |
 | Articles API | `/news/api/articles/` | Public |
 | RSS | `/news/rss/` | Public |
 | CSV / XLSX export | `/news/export/csv/`, `/news/export/xlsx/` | Public |

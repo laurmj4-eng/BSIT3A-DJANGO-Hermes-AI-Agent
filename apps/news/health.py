@@ -1,8 +1,8 @@
-"""Health / source overview for the Hermes AI News dashboard.
+"""Health / source overview data for the Hermes AI News dashboard.
 
-Provides :func:`sources_page`, :func:`sources_json`, and :func:`refresh_log_json`
-so the ``news/sources.html`` template can display feed health, summary stats,
-and recent refresh runs without touching the article list.
+Provides :func:`sources_json` and :func:`refresh_log_json` so consumers can
+read feed health, summary stats, and recent refresh runs without touching the
+article list.
 """
 
 from __future__ import annotations
@@ -11,8 +11,6 @@ from datetime import datetime, timezone
 
 from django.db.models import Count, Max
 from django.http import JsonResponse
-from django.shortcuts import render
-from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET
 
 from .feeds import FEEDS
@@ -93,61 +91,6 @@ def _summary(rows):
         "error": sum(1 for r in rows if r["status"] == "error"),
         "idle": sum(1 for r in rows if r["status"] == "idle"),
     }
-
-
-def _latest_run_summary(latest):
-    """Compact dict for the template's latest-run alert."""
-    if not latest:
-        return None
-    return {
-        "status": latest.status,
-        "started_at": latest.started_at,
-        "finished_at": latest.finished_at,
-        "created_count": latest.created_count,
-        "updated_count": latest.updated_count,
-        "total_articles": latest.total_articles,
-        "errors_count": len(latest.errors) if isinstance(latest.errors, list) else 0,
-    }
-
-
-@ensure_csrf_cookie
-def sources_page(request):
-    """Render the source-health dashboard page."""
-    rows = _health_rows()
-    summary = _summary(rows)
-    latest = latest_run()
-
-    # Last article fetched_at across all articles.
-    last_updated = (
-        Article.objects.order_by("-fetched_at").values_list("fetched_at", flat=True).first()
-    )
-
-    # Latest 10 refresh runs, newest first.
-    runs = RefreshRun.objects.order_by("-started_at")[:10]
-
-    return render(
-        request,
-        "news/sources.html",
-        {
-            "sources": rows,
-            "summary": summary,
-            "latest_run": latest,
-            "latest_summary": _latest_run_summary(latest),
-            "latest_tone": (
-                {
-                    "success": "success",
-                    "partial": "warning",
-                    "failed": "danger",
-                    "running": "info",
-                }.get(latest.status, "secondary")
-                if latest
-                else "secondary"
-            ),
-            "runs": runs,
-            "configured_sources": len(FEEDS),
-            "last_updated": last_updated,
-        },
-    )
 
 
 @require_GET

@@ -84,7 +84,9 @@ body {
 .page-body,
 .page-wrapper {
   background-color: var(--tblr-body-bg);
-}.container-xl {
+}
+
+.container-xl {
   background-color: transparent;
 }
 
@@ -216,7 +218,9 @@ body {
 
 .modal-footer {
   border-top: 1px solid var(--tblr-border-color);
-}.dh-brand-mark {
+}
+
+.dh-brand-mark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -245,8 +249,10 @@ body {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.45);
-}.dh-footer {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.dh-footer {
   border-top: 1px solid var(--tblr-border-color);
   color: var(--tblr-muted);
 }
@@ -254,7 +260,9 @@ body {
 .dh-footer a {
   color: var(--tblr-primary);
   font-weight: 600;
-}.pagination .page-link {
+}
+
+.pagination .page-link {
   border-radius: var(--tblr-border-radius-sm);
 }
 
@@ -270,7 +278,9 @@ body {
 .list-group-item.active {
   background-color: var(--tblr-primary);
   border-color: var(--tblr-primary);
-}.empty {
+}
+
+.empty {
   --tblr-empty-padding: 1.5rem;
 }
 
@@ -283,394 +293,6 @@ body {
   font-weight: 600;
 }
 
-
-/* ==========================================================================
-   Auth / login
-   ========================================================================== */
-
-.auth-page {
-  min-height: 100vh;
-  display: grid;
-  grid-template-columns: 1.05fr 1fr;
-  background-color: var(--tblr-body-bg);
-}
-
-/* ---- Brand / marketing panel ---- */
-
-.auth-brand {
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 2rem;
-  padding: 3rem 3.25rem;
-  color: #fff;
-  background:
-    radial-gradient(110% 70% at 100% 0%, color-mix(in srgb, var(--tblr-primary) 32%, transparent) 0%, transparent 55%),
-    radial-gradient(90% 60% at 0% 100%, rgba(248, 184, 78, 0.14) 0%, transparent 60%),
-    linear-gradient(160deg, #171a3b 0%, #101224 100%);
-}
-
-.auth-brand::after {
-  content: "";
-  position: absolute;
-  right: -8rem;
-  top: -10rem;
-  width: 26rem;
-  height: 26rem;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.22) 0%, transparent 65%);
-  pointer-events: none;
-}
-
-.auth-brand > * {
-  position: relative;
-  z-index: 1;
-}
-
-.auth-brand-top {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-}
-
-.auth-brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.9rem;
-  height: 2.9rem;
-  flex-shrink: 0;
-  border-radius: 0.9rem;
-  font-size: 1.25rem;
-  color: #fff;
-  background: linear-gradient(135deg, var(--tblr-primary) 0%, #8b5cf6 100%);
-  box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--tblr-primary) 85%, transparent);
-}
-
-.auth-brand-name {
-  display: block;
-  font-weight: 800;
-  font-size: 1.25rem;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-}
-
-.auth-brand-sub {
-  display: block;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.auth-headline {
-  font-size: 2.1rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
-  margin: 0 0 0.75rem;
-}
-
-.auth-headline .accent {
-  background: linear-gradient(100deg, #a5b4fc 0%, #f8b84e 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.auth-lede {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 0.95rem;
-  max-width: 30rem;
-  margin: 0;
-}
-
-.auth-features {
-  list-style: none;
-  margin: 2rem 0 0;
-  padding: 0;
-  display: grid;
-  gap: 0.9rem;
-  max-width: 30rem;
-}
-
-.auth-features li {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.82);
-}
-
-.auth-features i {
-  flex-shrink: 0;
-  width: 1.65rem;
-  height: 1.65rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.5rem;
-  font-size: 0.72rem;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.11);
-  border: 1px solid rgba(255, 255, 255, 0.13);
-}
-
-.auth-stats {
-  display: flex;
-  gap: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.auth-stat-value {
-  display: block;
-  font-size: 1.4rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-}
-
-.auth-stat-label {
-  display: block;
-  font-size: 0.66rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.45);
-}
-
-/* ---- Form panel ---- */
-
-.auth-panel {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2.5rem 1.5rem;
-}
-
-.auth-card {
-  width: 100%;
-  max-width: 25rem;
-}
-
-.auth-card-head {
-  margin-bottom: 1.75rem;
-}
-
-.auth-title {
-  font-size: 1.6rem;
-  font-weight: 800;
-  letter-spacing: -0.025em;
-  margin: 0 0 0.35rem;
-}
-
-.auth-sub {
-  color: var(--tblr-muted);
-  margin: 0;
-  font-size: 0.9rem;
-}
-
-.auth-field {
-  position: relative;
-}
-
-/* Leading icon inside the input */
-.auth-field .field-icon {
-  position: absolute;
-  left: 0.9rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--tblr-muted);
-  font-size: 0.85rem;
-  pointer-events: none;
-  z-index: 3;
-}
-
-.auth-field .form-control {
-  padding-left: 2.5rem;
-  height: 2.9rem;
-}
-
-.auth-field .form-control.has-trailing {
-  padding-right: 2.9rem;
-}
-
-/* Show / hide password toggle */
-.auth-field .pw-toggle {
-  position: absolute;
-  right: 0.55rem;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 3;
-  width: 2rem;
-  height: 2rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 0.5rem;
-  background: transparent;
-  color: var(--tblr-muted);
-  font-size: 0.85rem;
-  transition: color 0.15s ease, background-color 0.15s ease;
-}
-
-.auth-field .pw-toggle:hover {
-  color: var(--tblr-primary);
-  background: rgba(var(--tblr-primary-rgb), 0.08);
-}
-
-.auth-field .pw-toggle:focus-visible {
-  outline: 2px solid rgba(var(--tblr-primary-rgb), 0.5);
-  outline-offset: 1px;
-}
-
-.auth-field.is-invalid .form-control {
-  border-color: var(--tblr-danger);
-}
-
-/* Locked-out state */
-.auth-locked .auth-field .form-control {
-  background-color: var(--tblr-bg-surface-secondary);
-  color: var(--tblr-muted);
-  cursor: not-allowed;
-}
-
-.auth-lock-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.75rem;
-  border-radius: 100rem;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--tblr-danger);
-  background: color-mix(in srgb, var(--tblr-danger) 12%, #fff);
-  border: 1px solid color-mix(in srgb, var(--tblr-danger) 25%, #fff);
-}
-
-.auth-lock-badge .countdown {
-  font-variant-numeric: tabular-nums;
-  font-weight: 800;
-}
-
-/* Submit button with busy state */
-.auth-submit {
-  position: relative;
-  height: 2.9rem;
-  font-weight: 700;
-}
-
-.auth-submit .spinner-border {
-  width: 1rem;
-  height: 1rem;
-  border-width: 0.15em;
-}
-
-/* Caps-lock hint */
-.auth-caps {
-  display: none;
-  align-items: center;
-  gap: 0.4rem;
-  margin-top: 0.4rem;
-  font-size: 0.76rem;
-  color: var(--tblr-warning);
-  font-weight: 600;
-}
-
-.auth-caps.show {
-  display: inline-flex;
-}
-
-/* Alert with icon */
-.auth-alert {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.65rem;
-  border-radius: var(--tblr-border-radius);
-  font-size: 0.85rem;
-  animation: auth-shake 0.4s ease;
-}
-
-.auth-alert i {
-  margin-top: 0.1rem;
-}
-
-@keyframes auth-shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-5px); }
-  40% { transform: translateX(5px); }
-  60% { transform: translateX(-3px); }
-  80% { transform: translateX(3px); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .auth-alert {
-    animation: none;
-  }
-}
-
-.auth-divider {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin: 1.5rem 0;
-  color: var(--tblr-muted);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.auth-divider::before,
-.auth-divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--tblr-border-color);
-}
-
-.auth-foot {
-  margin-top: 1.5rem;
-  text-align: center;
-  font-size: 0.78rem;
-  color: var(--tblr-muted);
-}
-
-/* ---- Responsive ---- */
-
-@media (max-width: 991.98px) {
-  .auth-page {
-    grid-template-columns: 1fr;
-  }
-
-  .auth-brand {
-    padding: 1.75rem 1.5rem;
-    gap: 1.25rem;
-  }
-
-  .auth-features,
-  .auth-stats {
-    display: none;
-  }
-
-  .auth-headline {
-    font-size: 1.5rem;
-  }
-
-  .auth-lede {
-    font-size: 0.85rem;
-  }
-
-  .auth-panel {
-    padding: 1.75rem 1.5rem 3rem;
-    align-items: flex-start;
-  }
-}
 
 /* ==========================================================================
    Hermes v2: top navigation, feed cards, tokens and utilities
@@ -938,6 +560,13 @@ textarea:focus-visible,
   padding: 0.7rem 0.75rem;
 }
 
+@media (max-width: 767.98px) {
+  /* With the search hidden, push the menu button to the right edge. */
+  .dh-topbar-actions {
+    margin-left: auto;
+  }
+}
+
 @media (max-width: 575.98px) {
   .dh-topbar-inner {
     min-height: 3.5rem;
@@ -1098,5 +727,206 @@ textarea:focus-visible,
   .dh-article-card:hover {
     transform: none;
     transition: none;
+  }
+}
+
+/* ==========================================================================
+   Hermes design pass 3
+   A thin token layer over Tabler: surfaces, type rhythm, status colors,
+   and the browser-owned surfaces (selection, scrollbar, caret, focus).
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* Spacing rhythm: 4px base */
+  --dh-space-1: 0.25rem;
+  --dh-space-2: 0.5rem;
+  --dh-space-3: 0.75rem;
+  --dh-space-4: 1rem;
+  --dh-space-5: 1.5rem;
+  --dh-space-6: 2rem;
+  --dh-space-7: 3rem;
+
+  /* Type scale */
+  --dh-text-2xs: 0.6875rem;
+  --dh-text-xs: 0.75rem;
+  --dh-text-sm: 0.8125rem;
+  --dh-text-base: 0.9375rem;
+  --dh-text-md: 1.0625rem;
+  --dh-text-lg: 1.25rem;
+  --dh-text-xl: 1.5rem;
+  --dh-text-2xl: 1.875rem;
+
+  /* Surfaces and text */
+  --dh-text: #232741;
+  --dh-text-muted: #5b627f;
+  --dh-text-subtle: #6b7290;
+  --dh-surface: #ffffff;
+  --dh-surface-2: #f8f9fe;
+  --dh-border: #e2e5f2;
+  --dh-border-strong: #cfd4e6;
+
+  /* Status */
+  --dh-ok: #15803d;
+  --dh-ok-bg: rgba(34, 197, 94, 0.12);
+  --dh-warn: #a16207;
+  --dh-warn-bg: rgba(245, 165, 36, 0.16);
+  --dh-danger: #b42318;
+  --dh-danger-bg: rgba(239, 68, 68, 0.12);
+
+  /* Motion */
+  --dh-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dh-duration: 180ms;
+
+  /* Browser surfaces */
+  --dh-selection-bg: rgba(99, 102, 241, 0.28);
+  --dh-selection-text: #141733;
+  --dh-scrollbar-thumb: #c3c8dd;
+}
+
+[data-bs-theme="dark"] {
+  color-scheme: dark;
+
+  --dh-text: #e6e8f4;
+  --dh-text-muted: #b4bbd4;
+  --dh-text-subtle: #9aa3c0;
+  --dh-surface: #161a30;
+  --dh-surface-2: #1b1f38;
+  --dh-border: rgba(255, 255, 255, 0.11);
+  --dh-border-strong: rgba(255, 255, 255, 0.2);
+
+  --dh-ok: #4ade80;
+  --dh-ok-bg: rgba(34, 197, 94, 0.14);
+  --dh-warn: #fbbf24;
+  --dh-warn-bg: rgba(245, 165, 36, 0.16);
+  --dh-danger: #f87171;
+  --dh-danger-bg: rgba(239, 68, 68, 0.14);
+
+  --dh-selection-bg: rgba(124, 130, 245, 0.4);
+  --dh-selection-text: #ffffff;
+  --dh-scrollbar-thumb: #3a4166;
+}
+
+/* Muted text must clear 4.5:1 in both themes; Tabler's default secondary
+   token is too light on our light surfaces and too dark on our dark ones. */
+:root {
+  --tblr-secondary: #5b627f;
+}
+
+[data-bs-theme="dark"] {
+  --tblr-secondary: #b4bbd4;
+}
+
+/* ---- Browser-owned surfaces ---- */
+
+::selection {
+  background: var(--dh-selection-bg);
+  color: var(--dh-selection-text);
+}
+
+html {
+  scrollbar-color: var(--dh-scrollbar-thumb) transparent;
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--dh-scrollbar-thumb);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--dh-border-strong);
+  background-clip: content-box;
+}
+
+input,
+textarea,
+select,
+[contenteditable] {
+  caret-color: var(--tblr-primary);
+}
+
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"],
+progress {
+  accent-color: var(--tblr-primary);
+}
+
+a {
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+}
+
+/* Safety-net focus ring for anything the component rules miss. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--dh-focus-ring);
+  outline-offset: 2px;
+}
+
+/* ---- Type rhythm ---- */
+
+h1, h2, h3, h4,
+.page-title,
+.card-title,
+.dash-title,
+.dash-section-title,
+.dash-hero-title,
+.hermes-orbit-title,
+.feed-article-title {
+  text-wrap: balance;
+}
+
+p,
+li,
+.dash-headline-summary,
+.dash-hero-copy,
+.feed-article-summary,
+.cosmos-copy p {
+  text-wrap: pretty;
+}
+
+.dash-stat-value,
+.dash-run-stats dd,
+.dash-model-count,
+.dash-topic-total,
+.dash-views,
+time {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Press feedback without layout shift ---- */
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled,
+.btn.disabled {
+  box-shadow: none;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn:active:not(:disabled) {
+    transform: none;
   }
 }

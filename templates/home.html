@@ -1,8 +1,8 @@
 {% extends "theme/base.html" %}
 {% load static %}
 {% block extra_css %}
-<link href="{% static 'css/cosmic-hero.css' %}?v=5" rel="stylesheet"/>
-<link href="{% static 'css/dashboard.css' %}?v=3" rel="stylesheet"/>
+<link href="{% static 'css/cosmic-hero.css' %}?v=6" rel="stylesheet"/>
+<link href="{% static 'css/dashboard.css' %}?v=4" rel="stylesheet"/>
 {% endblock %}
 {% block content %}
 <div class="container-xl dash-page">
@@ -15,7 +15,6 @@
   {# ------------------------------------------------------------------ #}
   <header class="dash-header d-print-none">
     <div class="dash-header-text">
-      <p class="dash-pretitle">Overview</p>
       <h1 class="dash-title">Dashboard</h1>
     </div>
     <div class="dash-header-actions">
@@ -31,12 +30,6 @@
       <button type="button" id="dashboardRefresh" class="btn btn-secondary dash-refresh" data-refresh-url="{% url 'news:news_refresh' %}">
         <i class="fas fa-rotate me-1" aria-hidden="true"></i> Refresh feeds
       </button>
-      <a href="{% url 'news:news_list' %}" class="btn btn-primary">
-        <i class="fas fa-robot me-1" aria-hidden="true"></i> Open AI News
-      </a>
-      <a href="{% url 'news:sources_page' %}" class="btn btn-ghost-secondary d-none d-sm-inline-flex">
-        <i class="fas fa-server me-1" aria-hidden="true"></i> Sources
-      </a>
     </div>
   </header>
 
@@ -56,7 +49,6 @@
 
       <div class="card-body cosmos-content">
         <div class="cosmos-head text-center">
-          <div class="page-pretitle">Hermes Intelligence Feed</div>
           <div class="hermes-rule mb-2"></div>
           <h2 class="hermes-orbit-title mb-1">HERMES AGENT</h2>
           <div class="hermes-rule mt-2 mb-3"></div>
@@ -174,11 +166,11 @@
       <span class="dash-stat-value">{{ total_articles }}</span>
       <span class="dash-stat-meta">+{{ articles_today }} today · {{ articles_week }} this week</span>
     </a>
-    <a class="dash-stat" href="{% url 'news:sources_page' %}">
+    <div class="dash-stat">
       <span class="dash-stat-label">Sources</span>
       <span class="dash-stat-value">{{ feeds_ok }}<span class="dash-stat-sub">/{{ configured_sources }}</span></span>
       <span class="dash-stat-meta">feeds healthy{% if feeds_error %} · {{ feeds_error }} erroring{% endif %}</span>
-    </a>
+    </div>
     <a class="dash-stat" href="{% url 'news:news_list' %}?unread=1">
       <span class="dash-stat-label">Unread</span>
       <span class="dash-stat-value">{{ unread_total }}</span>
@@ -207,7 +199,6 @@
   <section class="dash-model-section" id="model-coverage" aria-labelledby="dash-models-title">
     <div class="dash-section-head">
       <div>
-        <p class="dash-pretitle mb-1">Models</p>
         <h2 class="dash-section-title" id="dash-models-title">Coverage by platform</h2>
       </div>
       <p class="dash-section-sub">Every model with its originating platform and live article count.</p>
@@ -422,9 +413,6 @@
     <section class="card dash-card" aria-labelledby="dash-health-title">
       <div class="card-header">
         <h2 class="card-title" id="dash-health-title">Source health</h2>
-        <div class="card-actions">
-          <a href="{% url 'news:sources_page' %}" class="btn btn-sm btn-outline-secondary">View all sources</a>
-        </div>
       </div>
       <div class="card-body">
         <ul class="dash-health">
@@ -453,8 +441,6 @@
       <a href="{% url 'news:news_rss' %}">RSS</a>
       <span aria-hidden="true"> · </span>
       <a href="{% url 'news:news_api' %}">API</a>
-      <span aria-hidden="true"> · </span>
-      <a href="{% url 'news:sources_page' %}">Sources</a>
     </span>
     <span>
       {% if last_updated %}

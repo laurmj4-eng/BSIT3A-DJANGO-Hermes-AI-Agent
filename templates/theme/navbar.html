@@ -22,11 +22,6 @@
            {% if request.resolver_match.url_name == 'news_list' %}aria-current="page"{% endif %}>
           AI News
         </a>
-        <a class="dh-topbar-link {% if request.resolver_match.url_name == 'sources_page' %}active{% endif %}"
-           href="{% url 'news:sources_page' %}"
-           {% if request.resolver_match.url_name == 'sources_page' %}aria-current="page"{% endif %}>
-          Sources
-        </a>
       </nav>
 
       <form class="dh-topbar-search d-none d-md-flex" action="{% url 'news:news_list' %}" method="get" role="search">
@@ -57,9 +52,6 @@
         <a class="dh-topbar-link {% if request.resolver_match.url_name == 'news_list' %}active{% endif %}"
            href="{% url 'news:news_list' %}"
            {% if request.resolver_match.url_name == 'news_list' %}aria-current="page"{% endif %}>AI News</a>
-        <a class="dh-topbar-link {% if request.resolver_match.url_name == 'sources_page' %}active{% endif %}"
-           href="{% url 'news:sources_page' %}"
-           {% if request.resolver_match.url_name == 'sources_page' %}aria-current="page"{% endif %}>Sources</a>
         <a class="dh-topbar-link" href="#offcanvasSettings"
            data-bs-toggle="offcanvas" data-bs-target="#offcanvasSettings"
            aria-controls="offcanvasSettings">Theme settings</a>

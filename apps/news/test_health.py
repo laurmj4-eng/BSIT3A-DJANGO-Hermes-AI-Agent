@@ -33,12 +33,6 @@ class HealthDataTests(TestCase):
                 published_at=datetime(2026, 10, 27, 9, index, tzinfo=timezone.utc),
             )
 
-    def test_sources_page_is_public_and_renders(self):
-        response = self.client.get(reverse("news:sources_page"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Source health")
-
     def test_sources_json_keys(self):
         response = self.client.get(reverse("news:sources_json"))
 
