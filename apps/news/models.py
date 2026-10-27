@@ -2,6 +2,7 @@
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class Topic(models.Model):
@@ -89,3 +90,20 @@ class RefreshRun(models.Model):
 
     def __str__(self):
         return f'{self.status} {self.started_at}'
+
+
+class PlatformModel(models.Model):
+    """Newest model detected for a platform from news headlines."""
+    key = models.CharField(max_length=40, unique=True)
+    label = models.CharField(max_length=60)
+    version = models.CharField(max_length=20, default='')
+    source_title = models.CharField(max_length=300, blank=True)
+    source_url = models.URLField(max_length=1000, blank=True)
+    detected_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        db_table = 'tblnewsplatformmodel'
+        ordering = ['key']
+
+    def __str__(self):
+        return f'{self.key}: {self.label}'

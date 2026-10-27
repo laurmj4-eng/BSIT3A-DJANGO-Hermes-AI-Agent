@@ -11,6 +11,7 @@ from django.shortcuts import render
 from django.utils import timezone
 
 from apps.news.feeds import FEEDS
+from apps.news.model_watch import current_models
 from apps.news.models import Article, Topic
 from apps.news.services import latest_run
 
@@ -23,11 +24,14 @@ MODEL_PLATFORMS = [
         'mono': True,
         'models': [
             {
-                'key': 'claude', 'label': 'Claude',
+                'key': 'claude', 'label': 'Claude 5.5',
                 'query': 'claude', 'color': '#D97757',
-                'desc': 'Anthropic reasoning models',
+                'desc': 'Anthropic Claude Opus 5.5 / Sonnet 5.5',
                 'logo': 'icons/models/model-claude.svg',
-                'keywords': ['claude', 'anthropic'],
+                'keywords': [
+                    'claude', 'anthropic', 'claude 5', 'opus 5', 'sonnet 5',
+                    'claude 4', 'opus 4', 'sonnet 4',
+                ],
             },
         ],
     },
@@ -36,11 +40,11 @@ MODEL_PLATFORMS = [
         'color': '#4285F4', 'logo': 'icons/models/platform-google.svg',
         'models': [
             {
-                'key': 'gemini', 'label': 'Gemini',
+                'key': 'gemini', 'label': 'Gemini 4',
                 'query': 'gemini', 'color': '#4285F4',
-                'desc': 'Google multimodal models',
+                'desc': 'Google Gemini 4 multimodal models',
                 'logo': 'icons/models/model-gemini.svg',
-                'keywords': ['gemini', 'deepmind', 'bard'],
+                'keywords': ['gemini', 'deepmind', 'bard', 'gemini 4', 'gemini 3', 'gemini 3 pro'],
             },
         ],
     },
@@ -50,12 +54,12 @@ MODEL_PLATFORMS = [
         'mono': True,
         'models': [
             {
-                'key': 'gpt', 'label': 'GPT / OpenAI',
+                'key': 'gpt', 'label': 'GPT-6 Astra',
                 'query': 'openai', 'color': '#10A37F',
-                'desc': 'OpenAI chat + reasoning',
+                'desc': 'OpenAI GPT-6 Astra flagship',
                 'logo': 'icons/models/model-openai.svg',
                 'mono': True,
-                'keywords': ['gpt', 'openai', 'chatgpt'],
+                'keywords': ['gpt', 'openai', 'chatgpt', 'gpt-6', 'gpt 6', 'gpt-5', 'gpt 5'],
             },
         ],
     },
@@ -64,11 +68,11 @@ MODEL_PLATFORMS = [
         'color': '#0668E1', 'logo': 'icons/models/platform-meta.svg',
         'models': [
             {
-                'key': 'llama', 'label': 'Llama / Meta',
+                'key': 'llama', 'label': 'Llama 4',
                 'query': 'llama', 'color': '#0668E1',
-                'desc': 'Meta open-weight models',
+                'desc': 'Meta Llama 4 open-weight models',
                 'logo': 'icons/models/model-meta.svg',
-                'keywords': ['llama', 'meta ai', 'at meta', 'muse', "meta's", 'meta\u2019s', 'mistral-muse'],
+                'keywords': ['llama', 'meta ai', 'at meta', 'muse', "meta's", 'meta\u2019s', 'mistral-muse', 'llama 4'],
             },
         ],
     },
@@ -77,11 +81,14 @@ MODEL_PLATFORMS = [
         'color': '#FF7000', 'logo': 'icons/models/platform-mistral.svg',
         'models': [
             {
-                'key': 'mistral', 'label': 'Mistral',
+                'key': 'mistral', 'label': 'Mistral Large 4',
                 'query': 'mistral', 'color': '#FF7000',
-                'desc': 'Mistral open models',
+                'desc': 'Mistral Large 4 (Le Chonk)',
                 'logo': 'icons/models/model-mistral.svg',
-                'keywords': ['mistral', 'mixtral'],
+                'keywords': [
+                    'mistral', 'mixtral', 'large 4', 'mistral large 4',
+                    'magistral', 'large 3',
+                ],
             },
         ],
     },
@@ -90,11 +97,14 @@ MODEL_PLATFORMS = [
         'color': '#4D6BFE', 'logo': 'icons/models/platform-deepseek.svg',
         'models': [
             {
-                'key': 'deepseek', 'label': 'DeepSeek',
+                'key': 'deepseek', 'label': 'DeepSeek V4',
                 'query': 'deepseek', 'color': '#4D6BFE',
-                'desc': 'DeepSeek + emerging labs',
+                'desc': 'DeepSeek V4 Pro / Flash',
                 'logo': 'icons/models/model-deepseek.svg',
-                'keywords': ['deepseek', 'qwen', 'grok'],
+                'keywords': [
+                    'deepseek', 'qwen', 'grok', 'deepseek v4', 'v4 pro',
+                    'v4 flash', 'v3.2', 'deepseek r1',
+                ],
             },
         ],
     },
@@ -115,7 +125,13 @@ MODEL_PLATFORMS = [
 
 
 def _model_stats(articles):
-    """Count articles per model and attach its originating platform."""
+    """Count articles per model and attach its originating platform.
+
+    Labels come from the curated ``MODEL_PLATFORMS`` roster, then get
+    overridden by the newest model release the refresh pipeline detected for
+    that platform (``PlatformModel``), so the dashboard keeps itself current.
+    """
+    auto_models = current_models()
     stats = []
     for platform in MODEL_PLATFORMS:
         for model in platform['models']:
@@ -124,12 +140,19 @@ def _model_stats(articles):
                 keyword_query |= (
                     Q(title__icontains=keyword) | Q(summary__icontains=keyword)
                 )
+            detected = auto_models.get(model['key']) or {}
+            detected_label = detected.get('label') or ''
+            desc = model['desc']
+            if detected_label:
+                desc = 'Auto-detected release: {0}'.format(
+                    detected.get('source_title') or detected_label
+                )
             stats.append({
                 'key': model['key'],
-                'label': model['label'],
+                'label': detected_label or model['label'],
                 'query': model['query'],
                 'color': model['color'],
-                'desc': model['desc'],
+                'desc': desc,
                 'logo': model['logo'],
                 'mono': model.get('mono', False),
                 'platform_key': platform['key'],
@@ -137,6 +160,9 @@ def _model_stats(articles):
                 'platform_color': platform['color'],
                 'platform_logo': platform['logo'],
                 'platform_mono': platform.get('mono', False),
+                'auto_detected': bool(detected_label),
+                'detected_version': detected.get('version', ''),
+                'detected_source_url': detected.get('source_url', ''),
                 'total': articles.filter(keyword_query).count(),
             })
     return stats

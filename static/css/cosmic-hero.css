@@ -609,3 +609,55 @@
   }
   .orbit-label { transition: none; }
 }
+
+/* Latest-model roster (hero left column) */
+.hermes-model-list {
+  list-style: none;
+  margin: 0 0 .85rem;
+  padding: 0;
+  display: grid;
+  gap: .3rem;
+}
+.hermes-model-list li { margin: 0; }
+.hermes-model-row {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .4rem .6rem;
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: .5rem;
+  background: rgba(15, 23, 42, .35);
+  text-decoration: none;
+  transition: border-color .18s ease, background .18s ease, transform .18s ease;
+}
+.hermes-model-row:hover,
+.hermes-model-row:focus-visible {
+  border-color: rgba(129, 140, 248, .55);
+  background: rgba(30, 41, 59, .6);
+  transform: translateX(2px);
+  outline: none;
+}
+.hermes-model-name {
+  font-size: .82rem;
+  font-weight: 600;
+  color: #f8fafc;
+  letter-spacing: .01em;
+}
+.hermes-model-platform {
+  margin-left: auto;
+  font-size: .62rem;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: #8ea0b8;
+}
+.hermes-model-count {
+  min-width: 1.5rem;
+  font-size: .68rem;
+  color: #64748b;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 575.98px) {
+  .hermes-model-row { padding: .34rem .5rem; }
+  .hermes-model-platform { display: none; }
+}

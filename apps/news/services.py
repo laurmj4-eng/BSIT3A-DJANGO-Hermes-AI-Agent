@@ -14,6 +14,7 @@ from django.utils import timezone
 
 from .classification import apply_topics
 from .feeds import fetch_all_feeds
+from .model_watch import update_latest_models
 from .models import Article, RefreshRun
 
 LOCK_STALE_MINUTES = 10
@@ -84,6 +85,13 @@ def run_refresh(trigger: str = "web", per_feed_limit: int = 25) -> RefreshRun:
                     apply_topics(article)
                 except Exception:
                     pass  # a classification bug must not fail the refresh
+
+        # Keep the platform -> newest-model roster current. A detector bug
+        # must never fail the refresh.
+        try:
+            update_latest_models()
+        except Exception:
+            pass
 
         run.finished_at = timezone.now()
         run.created_count = created_count

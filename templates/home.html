@@ -1,7 +1,7 @@
 {% extends "theme/base.html" %}
 {% load static %}
 {% block extra_css %}
-<link href="{% static 'css/cosmic-hero.css' %}?v=6" rel="stylesheet"/>
+<link href="{% static 'css/cosmic-hero.css' %}?v=7" rel="stylesheet"/>
 <link href="{% static 'css/dashboard.css' %}?v=4" rel="stylesheet"/>
 {% endblock %}
 {% block content %}
@@ -56,38 +56,21 @@
 
         <div class="row align-items-center g-0">
           <div class="col-lg-5 cosmos-copy">
-            <div class="text-uppercase hermes-orbit-sub mb-2">Decoding persistent memory</div>
-            <p class="text-muted mb-3">
-              One feed for every major AI model. Drag the galaxy to orbit,
-              scroll or pinch to zoom, then click
-              <strong class="text-white">Claude</strong>,
-              <strong class="text-white">Gemini</strong>, <strong class="text-white">GPT</strong>
-              or any model star to jump straight to its news.
-            </p>
-            <!-- 3-step workflow: Aggregate -> Understand -> Act -->
-            <div class="d-flex flex-column gap-2 mb-3">
-              <div class="d-flex gap-2 align-items-start workflow-step">
-                <span class="step-num">1</span>
-                <div>
-                  <div class="fw-medium text-white"><i class="fas fa-rss me-1"></i>Aggregate</div>
-                  <div class="text-muted small">5 feeds refresh into one de-duplicated feed.</div>
-                </div>
-              </div>
-              <div class="d-flex gap-2 align-items-start workflow-step">
-                <span class="step-num">2</span>
-                <div>
-                  <div class="fw-medium text-white"><i class="fas fa-filter me-1"></i>Understand</div>
-                  <div class="text-muted small">Search headlines, filter by source or model.</div>
-                </div>
-              </div>
-              <div class="d-flex gap-2 align-items-start workflow-step">
-                <span class="step-num">3</span>
-                <div>
-                  <div class="fw-medium text-white"><i class="fas fa-bookmark me-1"></i>Act</div>
-                  <div class="text-muted small">Bookmark stories and track them on this dashboard.</div>
-                </div>
-              </div>
-            </div>
+            <div class="text-uppercase hermes-orbit-sub mb-2">Latest models by platform</div>
+            <ul class="hermes-model-list">
+              {% for m in model_stats %}
+                <li>
+                  <a class="hermes-model-row" href="{% url 'news:news_list' %}?q={{ m.query }}" title="{{ m.desc }}">
+                    <span class="model-dot" style="background: {{ m.color }}"></span>
+                    <span class="hermes-model-name">{{ m.label }}</span>
+                    <span class="hermes-model-platform">{{ m.platform_name }}</span>
+                    {% if m.total %}<span class="hermes-model-count">{{ m.total }}</span>{% endif %}
+                  </a>
+                </li>
+              {% empty %}
+                <li class="text-muted small">Models load after the first feed refresh.</li>
+              {% endfor %}
+            </ul>
             <div class="d-flex gap-2 flex-wrap">
               <a href="{% url 'news:news_list' %}" class="btn btn-primary">
                 <i class="fas fa-robot me-1"></i> Open AI News
