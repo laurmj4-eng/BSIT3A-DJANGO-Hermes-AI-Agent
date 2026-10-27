@@ -2,6 +2,7 @@
 
 from datetime import datetime, timezone
 from unittest.mock import patch
+from urllib.error import HTTPError
 from urllib.request import URLError
 import io
 import types
@@ -199,6 +200,20 @@ class FetchFeedTests(SimpleTestCase):
         with patch("apps.news.feeds.urlopen", _fake_urlopen(body)):
             articles = fetch_feed(spec)
         self.assertEqual(articles[0]["title"], "OpenCode v2.2.0")
+
+    def test_retries_once_on_429(self):
+        calls = []
+
+        def _open(req, timeout=None):
+            calls.append(1)
+            if len(calls) == 1:
+                raise HTTPError(req.full_url, 429, "Too Many Requests", None, None)
+            return _FakeResponse(RSS_XML)
+
+        with patch("apps.news.feeds.urlopen", _open), patch("apps.news.feeds.time.sleep"):
+            articles = fetch_feed(FEEDS[0])
+        self.assertEqual(len(articles), 1)
+        self.assertEqual(len(calls), 2)
 
     def test_network_error_raises_feed_error(self):
         def _boom(req, timeout=None):

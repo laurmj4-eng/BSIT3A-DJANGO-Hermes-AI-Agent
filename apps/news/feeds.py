@@ -13,6 +13,7 @@ import socket
 import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
+from urllib.error import HTTPError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
@@ -48,7 +49,13 @@ FEEDS = [
     {
         "key": "deepmind_blog",
         "name": "Google DeepMind",
-        "url": "https://deepmind.google/blog/rss.xml",
+        # Official feed intermittently returns an empty 200 under burst load;
+        # Google News mirrors the same posts and stays reliable.
+        "url": (
+            "https://news.google.com/rss/search?q=site%3Adeepmind.google"
+            "&hl=en-US&gl=US&ceid=US%3Aen"
+        ),
+        "strip_title_suffix": True,
     },
     {
         "key": "meta_ai_news",
@@ -329,8 +336,15 @@ def fetch_feed(spec: dict) -> list[dict]:
     """
     def _download() -> bytes:
         req = Request(spec["url"], headers={"User-Agent": USER_AGENT})
-        with urlopen(req, timeout=TIMEOUT) as resp:
-            return resp.read(MAX_BYTES)
+        for attempt in range(2):
+            try:
+                with urlopen(req, timeout=TIMEOUT) as resp:
+                    return resp.read(MAX_BYTES)
+            except HTTPError as exc:
+                if attempt == 0 and exc.code in (429, 500, 502, 503):
+                    time.sleep(2.0)
+                    continue
+                raise
 
     try:
         raw = _download()

@@ -228,6 +228,18 @@ Open <http://127.0.0.1:8000/> — the dashboard is public, no sign-in needed.
 Go to **AI News** in the top navigation and click **Refresh feeds**. The first
 run pulls the latest articles from all configured sources.
 
+### 8b. Keep the news fresh automatically (Windows)
+
+`scripts/refresh_news.cmd` runs one refresh in a console;
+`scripts/refresh_news_silent.py` is the no-window variant. Register an hourly
+Task Scheduler job:
+
+```powershell
+schtasks /Create /TN "Hermes News Refresh" /SC HOURLY /MO 1 /TR "\"C:\path\to\project\.venv\Scripts\pythonw.exe\" \"C:\path\to\project\scripts\refresh_news_silent.py\"" /F
+```
+
+Output is appended to `%TEMP%\hermes-refresh.log`.
+
 ### 9. Run the test suite
 
 ```bash
