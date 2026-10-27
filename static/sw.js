@@ -1,4 +1,4 @@
-const CACHE = 'hermes-static-v5';
+const CACHE = 'hermes-static-v7';
 
 const CORE_URLS = [
   '/',
@@ -12,6 +12,7 @@ const CORE_URLS = [
   '/static/js/theme-init.js',
   '/static/js/theme-settings.js',
   '/static/js/app-ui.js',
+  '/static/js/scroll-reveal.js',
   '/static/js/cosmic-hero.js',
   '/static/manifest.webmanifest',
   '/static/icons/icon-192.png',

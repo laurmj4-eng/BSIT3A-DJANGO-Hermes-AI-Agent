@@ -10,6 +10,7 @@ from __future__ import annotations
 import concurrent.futures
 import re
 import socket
+import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from urllib.parse import urlparse
@@ -21,11 +22,76 @@ MAX_BYTES = 4_000_000
 USER_AGENT = "HermesNewsAgent/1.0 (+https://hermes-agent.nousresearch.com/)"
 
 # name, url, and how to map the feed's XML into a normalised article
+# Platform newsrooms come first so the dashboard "Source health" card
+# (which shows the first 8) always surfaces per-model coverage.
+# All URLs verified live on 2026-10-27.
 FEEDS = [
+    {
+        "key": "openai_news",
+        "name": "OpenAI News",
+        "url": "https://openai.com/news/rss.xml",
+    },
+    {
+        "key": "anthropic_news",
+        "name": "Anthropic News",
+        "url": (
+            "https://news.google.com/rss/search?q=site%3Aanthropic.com"
+            "&hl=en-US&gl=US&ceid=US%3Aen"
+        ),
+        "strip_title_suffix": True,
+    },
+    {
+        "key": "google_ai_blog",
+        "name": "Google AI Blog",
+        "url": "https://blog.google/technology/ai/rss/",
+    },
+    {
+        "key": "deepmind_blog",
+        "name": "Google DeepMind",
+        "url": "https://deepmind.google/blog/rss.xml",
+    },
+    {
+        "key": "meta_ai_news",
+        "name": "Meta AI News",
+        "url": (
+            "https://news.google.com/rss/search?q=site%3Aai.meta.com"
+            "&hl=en-US&gl=US&ceid=US%3Aen"
+        ),
+        "strip_title_suffix": True,
+    },
+    {
+        "key": "mistral_ai",
+        "name": "Mistral AI",
+        "url": "https://mistral.ai/rss.xml",
+    },
+    {
+        "key": "deepseek_news",
+        "name": "DeepSeek News",
+        "url": (
+            "https://news.google.com/rss/search?q=%22DeepSeek%22+when%3A30d"
+            "&hl=en-US&gl=US&ceid=US%3Aen"
+        ),
+        "strip_title_suffix": True,
+    },
+    {
+        "key": "groq_news",
+        "name": "Groq News",
+        "url": (
+            "https://news.google.com/rss/search?q=%22Groq%22+%28AI+OR+LPU+OR+inference%29+when%3A30d"
+            "&hl=en-US&gl=US&ceid=US%3Aen"
+        ),
+        "strip_title_suffix": True,
+    },
+    {
+        "key": "huggingface_blog",
+        "name": "Hugging Face",
+        "url": "https://huggingface.co/blog/feed.xml",
+    },
     {
         "key": "google_ai",
         "name": "Google News — AI",
         "url": "https://news.google.com/rss/search?q=artificial+intelligence&hl=en-US&gl=US&ceid=US:en",
+        "strip_title_suffix": True,
     },
     {
         "key": "techcrunch_ai",
@@ -35,7 +101,11 @@ FEEDS = [
     {
         "key": "venturebeat_ai",
         "name": "VentureBeat AI",
-        "url": "https://venturebeat.com/category/ai/feed/",
+        "url": (
+            "https://news.google.com/rss/search?q=site%3Aventurebeat.com+AI"
+            "&hl=en-US&gl=US&ceid=US%3Aen"
+        ),
+        "strip_title_suffix": True,
     },
     {
         "key": "arxiv_cs_ai",
@@ -210,17 +280,26 @@ def fetch_feed(spec: dict) -> list[dict]:
     Raises ``FeedError`` on any network or parse problem so the caller can
     record the failure per-feed instead of failing the whole refresh.
     """
-    try:
+    def _download() -> bytes:
         req = Request(spec["url"], headers={"User-Agent": USER_AGENT})
         with urlopen(req, timeout=TIMEOUT) as resp:
-            raw = resp.read(MAX_BYTES)
+            return resp.read(MAX_BYTES)
+
+    try:
+        raw = _download()
     except (socket.timeout, OSError, ValueError) as exc:
         raise FeedError(f"{spec['name']}: {exc}") from exc
 
     try:
         root = ET.fromstring(raw)
-    except ET.ParseError as exc:
-        raise FeedError(f"{spec['name']}: malformed XML ({exc})") from exc
+    except ET.ParseError:
+        # Some CDNs answer 200 with an empty or bot-check body when several
+        # Google-hosted feeds are hit at once; back off, then retry once.
+        time.sleep(0.6)
+        try:
+            root = ET.fromstring(_download())
+        except (ET.ParseError, socket.timeout, OSError, ValueError) as exc:
+            raise FeedError(f"{spec['name']}: malformed XML ({exc})") from exc
 
     # RSS 2.0 uses <item>, Atom uses <entry>
     entries = root.findall(".//item") or root.findall(".//atom:entry", NS)
@@ -230,6 +309,11 @@ def fetch_feed(spec: dict) -> list[dict]:
     articles = []
     for entry in entries:
         title = _clean(_first(entry, "title", "atom:title"), limit=300)
+        if spec.get("strip_title_suffix") and title:
+            # Google News appends " - Publisher". Drop that tail only.
+            head, sep, tail = title.rpartition(" - ")
+            if sep and 0 < len(tail) <= 40:
+                title = head.strip()
         link = _atom_link(entry) or _first(entry, "link")
         if not title or not link:
             continue
@@ -282,7 +366,10 @@ def fetch_all_feeds(per_feed_limit: int = 25) -> tuple[list[dict], list[dict]]:
     errors: list[dict] = []
     results: list[list[dict] | None] = [None] * len(FEEDS)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=len(FEEDS)) as pool:
+    # Keep the burst small so Google-hosted feeds don't answer with empty
+    # 200s, and so a refresh doesn't spike the host machine.
+    workers = min(5, len(FEEDS))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
         futures = [pool.submit(fetch_feed, spec) for spec in FEEDS]
         for idx, future in enumerate(futures):
             spec = FEEDS[idx]

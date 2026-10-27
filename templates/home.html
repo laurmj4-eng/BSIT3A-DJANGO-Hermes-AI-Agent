@@ -160,7 +160,7 @@
   {# ------------------------------------------------------------------ #}
   {# 3. STAT TILES                                                       #}
   {# ------------------------------------------------------------------ #}
-  <section class="dash-stats" aria-label="Key numbers">
+  <section class="dash-stats" aria-label="Key numbers" data-reveal>
     <a class="dash-stat" href="{% url 'news:news_list' %}">
       <span class="dash-stat-label">Total articles</span>
       <span class="dash-stat-value">{{ total_articles }}</span>
@@ -196,12 +196,11 @@
   {# ------------------------------------------------------------------ #}
   {# 3b. MODEL COVERAGE — original model + platform logos                #}
   {# ------------------------------------------------------------------ #}
-  <section class="dash-model-section" id="model-coverage" aria-labelledby="dash-models-title">
+  <section class="dash-model-section" id="model-coverage" aria-labelledby="dash-models-title" data-reveal>
     <div class="dash-section-head">
       <div>
         <h2 class="dash-section-title" id="dash-models-title">Coverage by platform</h2>
       </div>
-      <p class="dash-section-sub">Every model with its originating platform and live article count.</p>
     </div>
     <div class="dash-model-grid">
       {% for m in model_stats %}
@@ -233,7 +232,7 @@
   {# ------------------------------------------------------------------ #}
   <div class="dash-grid">
 
-    <section class="card dash-card" aria-labelledby="dash-latest-title">
+    <section class="card dash-card" aria-labelledby="dash-latest-title" data-reveal>
       <div class="card-header">
         <h2 class="card-title" id="dash-latest-title">Latest headlines</h2>
         <div class="card-actions">
@@ -299,7 +298,7 @@
     </section>
 
     <div class="dash-side">
-      <section class="card dash-card" aria-labelledby="dash-trending-title">
+      <section class="card dash-card" aria-labelledby="dash-trending-title" data-reveal>
         <div class="card-header">
           <h2 class="card-title" id="dash-trending-title">Trending now</h2>
         </div>
@@ -336,7 +335,7 @@
         </div>
       </section>
 
-      <section class="card dash-card" aria-labelledby="dash-topics-title">
+      <section class="card dash-card" aria-labelledby="dash-topics-title" data-reveal>
         <div class="card-header">
           <h2 class="card-title" id="dash-topics-title">Topic mix</h2>
         </div>
@@ -365,7 +364,7 @@
   {# ------------------------------------------------------------------ #}
   <div class="dash-grid dash-grid-lower">
 
-    <section class="card dash-card" aria-labelledby="dash-run-title">
+    <section class="card dash-card" aria-labelledby="dash-run-title" data-reveal>
       <div class="card-header">
         <h2 class="card-title" id="dash-run-title">Latest refresh</h2>
         {% if latest_run %}
@@ -398,19 +397,12 @@
             </details>
           {% endif %}
         {% else %}
-          <p class="dash-run-none">
-            No refresh has run yet. Hit <strong>Run refresh</strong> below and Hermes
-            will pull every configured feed, de-duplicate the results and file them
-            under their topics.
-          </p>
+          <p class="dash-run-none mb-0">No refresh yet.</p>
         {% endif %}
-        <button type="button" id="dashboardRefreshCard" class="btn btn-primary w-100 dash-refresh" data-refresh-url="{% url 'news:news_refresh' %}">
-          <i class="fas fa-rotate me-1" aria-hidden="true"></i> Run refresh
-        </button>
       </div>
     </section>
 
-    <section class="card dash-card" aria-labelledby="dash-health-title">
+    <section class="card dash-card" aria-labelledby="dash-health-title" data-reveal>
       <div class="card-header">
         <h2 class="card-title" id="dash-health-title">Source health</h2>
       </div>
@@ -436,7 +428,7 @@
   {# ------------------------------------------------------------------ #}
   {# 6. FOOTER NOTE                                                      #}
   {# ------------------------------------------------------------------ #}
-  <div class="dash-footnote d-print-none">
+  <div class="dash-footnote d-print-none" data-reveal>
     <span>
       <a href="{% url 'news:news_rss' %}">RSS</a>
       <span aria-hidden="true"> · </span>

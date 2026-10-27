@@ -68,7 +68,7 @@ MODEL_PLATFORMS = [
                 'query': 'llama', 'color': '#0668E1',
                 'desc': 'Meta open-weight models',
                 'logo': 'icons/models/model-meta.svg',
-                'keywords': ['llama', 'meta ai', 'mistral-muse'],
+                'keywords': ['llama', 'meta ai', 'at meta', 'muse', "meta's", 'meta\u2019s', 'mistral-muse'],
             },
         ],
     },

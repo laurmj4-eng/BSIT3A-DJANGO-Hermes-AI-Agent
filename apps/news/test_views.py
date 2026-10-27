@@ -13,6 +13,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.news.feeds import FEEDS
 from apps.news.models import Article, RefreshRun, Topic
 from apps.news.services import RefreshLockError
 
@@ -73,7 +74,7 @@ class NewsPageTests(TestCase):
         for key in LEGACY_CONTEXT_KEYS:
             self.assertIn(key, response.context, key)
         self.assertEqual(response.context["total"], 1)
-        self.assertEqual(response.context["feed_count"], 5)
+        self.assertEqual(response.context["feed_count"], len(FEEDS))
         self.assertEqual(response.context["articles"].number, 1)
 
         # source_options are dicts, source_choices stay (key, name) tuples.

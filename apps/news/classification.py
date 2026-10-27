@@ -28,7 +28,7 @@ TOPIC_DEFS = [
         'name': 'Llama / Meta',
         'color': '#0668e1',
         'description': 'Meta open-weight models',
-        'keywords': ['llama', 'meta ai'],
+        'keywords': ['llama', 'meta ai', 'muse'],
     },
     {
         'slug': 'mistral',

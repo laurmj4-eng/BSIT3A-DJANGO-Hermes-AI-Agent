@@ -127,6 +127,41 @@ class FetchFeedTests(SimpleTestCase):
             articles = fetch_feed(FEEDS[0])
         self.assertEqual([a["url"] for a in articles], ["https://example.com/ok"])
 
+    def test_strips_google_news_publisher_suffix(self):
+        body = b"""<?xml version="1.0"?>
+        <rss version="2.0"><channel>
+          <item>
+            <title>OpenAI ships new model - The Verge</title>
+            <link>https://example.com/story-3</link>
+          </item>
+        </channel></rss>"""
+        spec = {
+            "key": "google_test",
+            "name": "Google News - Test",
+            "url": "https://news.google.com/rss/search?q=test",
+            "strip_title_suffix": True,
+        }
+        with patch("apps.news.feeds.urlopen", _fake_urlopen(body)):
+            articles = fetch_feed(spec)
+        self.assertEqual(articles[0]["title"], "OpenAI ships new model")
+
+    def test_keeps_publisher_suffix_without_flag(self):
+        body = b"""<?xml version="1.0"?>
+        <rss version="2.0"><channel>
+          <item>
+            <title>OpenAI ships new model - The Verge</title>
+            <link>https://example.com/story-4</link>
+          </item>
+        </channel></rss>"""
+        spec = {
+            "key": "plain_test",
+            "name": "Plain Test",
+            "url": "https://example.com/feed.xml",
+        }
+        with patch("apps.news.feeds.urlopen", _fake_urlopen(body)):
+            articles = fetch_feed(spec)
+        self.assertEqual(articles[0]["title"], "OpenAI ships new model - The Verge")
+
     def test_network_error_raises_feed_error(self):
         def _boom(req, timeout=None):
             raise URLError("down")

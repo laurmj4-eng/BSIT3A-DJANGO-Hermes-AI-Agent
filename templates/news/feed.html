@@ -42,7 +42,7 @@
   <div id="refreshAlert" class="alert d-none mt-3" role="status" aria-live="polite"></div>
 
   <!-- FILTER PANEL -->
-  <form method="get" action="{% url 'news:news_list' %}" class="card mb-3 feed-filter-card" id="filterForm">
+  <form method="get" action="{% url 'news:news_list' %}" class="card mb-3 feed-filter-card" id="filterForm" data-reveal>
     <div class="card-body">
       <div class="row g-2 align-items-end">
         <div class="col-12 col-md-6 col-lg-4">
@@ -172,7 +172,7 @@
   {% if articles.object_list %}
     <div id="articlesContainer" class="articles-container feed-view-list">
       {% for a in articles %}
-        <article class="card dh-article-card feed-article {% if a.is_read %}is-read{% endif %} {% if a.is_saved %}is-saved{% endif %}" data-article-id="{{ a.id }}">
+        <article class="card dh-article-card feed-article {% if a.is_read %}is-read{% endif %} {% if a.is_saved %}is-saved{% endif %}" data-article-id="{{ a.id }}" data-reveal>
           <div class="card-body">
             <div class="d-flex align-items-start gap-3 feed-article-body">
               <div class="flex-fill min-w-0">
@@ -284,7 +284,7 @@
   <!-- PAGINATION -->
   {% if articles.paginator.num_pages > 1 %}
     <div class="card mt-3">
-      <div class="card-footer feed-pagination d-flex flex-wrap align-items-center gap-2">
+      <div class="card-footer feed-pagination d-flex flex-wrap align-items-center gap-2" data-reveal>
         <p class="m-0 text-muted small">
           Page {{ articles.number }} of {{ articles.paginator.num_pages }} ·
           Showing <span class="fw-medium">{{ articles.start_index }}</span>

@@ -71,6 +71,39 @@
   animation: dhSkeletonShimmer 1.5s ease-in-out infinite;
 }
 
+/* ==========================================================================
+   Scroll reveal
+   ========================================================================== */
+.reveal-armed {
+  opacity: 0;
+}
+
+.reveal-armed.is-revealed {
+  opacity: 1;
+  animation: dh-reveal 0.55s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@keyframes dh-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-armed {
+    opacity: 1;
+  }
+
+  .reveal-armed.is-revealed {
+    animation: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dh-skeleton {
     animation: none;
