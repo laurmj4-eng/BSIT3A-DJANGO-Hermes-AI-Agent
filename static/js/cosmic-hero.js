@@ -69,6 +69,19 @@
   var resizeTimer = 0;
   var resizeObserver = null;
   var intersectionObserver = null;
+  var rafId = 0;
+  var running = false;
+  var frameInterval = 1000 / 30;
+  var lastDraw = 0;
+  var settleFrames = 0;
+  var pixelBudget = 1100000;
+  var renderScale = 0.9;
+  var slowFrames = 0;
+  var qualityStage = 0;
+  var sceneRect = null;
+  var wrapW = 0;
+  var wrapH = 0;
+  var rectTick = 0;
 
   var VERTEX_SRC = [
     'attribute vec2 a_position;',
@@ -551,7 +564,7 @@ void main() {
         depth: false,
         stencil: false,
         preserveDrawingBuffer: false,
-        powerPreference: 'high-performance'
+        powerPreference: 'default'
       }) || canvas.getContext('experimental-webgl');
 
       if (!gl) return false;
@@ -624,14 +637,23 @@ void main() {
   function resize() {
     if (!gl || !program || !uniforms) return;
 
-    var sceneRect = scene.getBoundingClientRect();
+    sceneRect = scene.getBoundingClientRect();
     var wrapRect = wrap.getBoundingClientRect();
+    wrapW = Math.max(1, Math.round(wrapRect.width));
+    wrapH = Math.max(1, Math.round(wrapRect.height));
     var width = Math.max(1, Math.round(sceneRect.width));
     var height = Math.max(1, Math.round(sceneRect.height));
-    DPR = Math.min(window.devicePixelRatio || 1, 1.5);
+    DPR = Math.min(window.devicePixelRatio || 1, 1);
 
     var pixelWidth = Math.max(1, Math.round(width * DPR));
     var pixelHeight = Math.max(1, Math.round(height * DPR));
+    var budget = pixelBudget * renderScale * renderScale;
+    var pixels = pixelWidth * pixelHeight;
+    if (pixels > budget) {
+      var fit = Math.sqrt(budget / pixels);
+      pixelWidth = Math.max(1, Math.round(pixelWidth * fit));
+      pixelHeight = Math.max(1, Math.round(pixelHeight * fit));
+    }
 
     if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
       canvas.width = pixelWidth;
@@ -662,9 +684,30 @@ void main() {
     );
   }
 
+  function refreshRect() {
+    if (!scene) return;
+    sceneRect = scene.getBoundingClientRect();
+    if (wrap) {
+      wrapW = Math.max(1, wrap.clientWidth);
+      wrapH = Math.max(1, wrap.clientHeight);
+    }
+  }
+
+  function scheduleRect() {
+    if (rectTick) return;
+    rectTick = window.requestAnimationFrame(function () {
+      rectTick = 0;
+      refreshRect();
+      kick(2);
+    });
+  }
+
   function scheduleResize() {
     window.clearTimeout(resizeTimer);
-    resizeTimer = window.setTimeout(resize, 50);
+    resizeTimer = window.setTimeout(function () {
+      resize();
+      kick(2);
+    }, 80);
   }
 
   function buildLabels() {
@@ -737,8 +780,8 @@ void main() {
   function updateLabels() {
     if (!labelsVisible || !wrap) return;
 
-    var width = wrap.clientWidth;
-    var height = wrap.clientHeight;
+    var width = wrapW || wrap.clientWidth;
+    var height = wrapH || wrap.clientHeight;
     if (!width || !height) return;
 
     var cx = width * 0.5;
@@ -824,22 +867,57 @@ void main() {
     view.targetTilt = 0.62;
     view.targetZoom = 1;
     hideHint();
+    kick(40);
   }
 
   function setZoom(next) {
     view.targetZoom = clamp(next, 0.62, 2.4);
     hideHint();
+    kick(40);
+  }
+
+  function start() {
+    if (running || !gl || !program) return;
+    if (!visible || document.hidden) return;
+    running = true;
+    last = performance.now();
+    lastDraw = 0;
+    rafId = window.requestAnimationFrame(frame);
+  }
+
+  function stop() {
+    running = false;
+    if (rafId) {
+      window.cancelAnimationFrame(rafId);
+      rafId = 0;
+    }
+  }
+
+  function kick(frames) {
+    settleFrames = Math.max(settleFrames, frames || 24);
+    if (!running) start();
   }
 
   function frame(now) {
-    window.requestAnimationFrame(frame);
+    if (!running) return;
+    rafId = 0;
+    if (!gl || !program || !visible || document.hidden) {
+      stop();
+      return;
+    }
 
-    var dt = Math.min((now - last) / 1000, 0.05);
+    /* Hard 30fps cap: rAF may fire at 60-144Hz, the shader is expensive. */
+    if (now - lastDraw < frameInterval - 0.5) {
+      rafId = window.requestAnimationFrame(frame);
+      return;
+    }
+
+    var rawDt = (now - last) / 1000;
+    var dt = Math.min(rawDt, 0.05);
     last = now;
+    lastDraw = now;
 
-    if (!gl || !program) return;
-
-    if (speed > 0 && visible && !document.hidden) {
+    if (speed > 0) {
       elapsed += dt * speed;
       if (!view.dragging) {
         view.yaw += dt * 0.012 * speed;
@@ -860,6 +938,27 @@ void main() {
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
     if (labelsVisible) updateLabels();
+    if (settleFrames > 0) settleFrames--;
+
+    /* Adaptive quality: degrade backing-store resolution on slow GPUs. */
+    if (qualityStage < 2 && rawDt > 0.045) {
+      slowFrames++;
+      if (slowFrames >= (qualityStage === 0 ? 6 : 10)) {
+        qualityStage++;
+        renderScale = qualityStage === 1 ? 0.72 : 0.52;
+        slowFrames = 0;
+        resize();
+      }
+    } else if (slowFrames > 0 && rawDt <= 0.04) {
+      slowFrames--;
+    }
+
+    if (speed <= 0.001 && settleFrames <= 0 && !view.dragging) {
+      stop();
+      return;
+    }
+
+    rafId = window.requestAnimationFrame(frame);
   }
 
   function setupViewControls() {
@@ -874,6 +973,7 @@ void main() {
         speed = clamp(next, 0, 2.4);
         if (speed > 0) lastSpeed = speed;
         paintMotion();
+        kick(2);
       });
     }
 
@@ -975,6 +1075,7 @@ void main() {
       }
 
       hideHint();
+      kick(40);
       try { wrap.setPointerCapture(event.pointerId); } catch (err) {}
       event.preventDefault();
     });
@@ -1004,6 +1105,7 @@ void main() {
 
       view.yaw -= dx * 0.006;
       view.targetTilt = clamp(view.targetTilt + dy * 0.0024, 0.34, 1.25);
+      kick(40);
       event.preventDefault();
     });
 
@@ -1057,80 +1159,117 @@ void main() {
 
       if (handled) {
         hideHint();
+        kick(40);
         event.preventDefault();
       }
     });
   }
 
-  buildLabels();
-  paintMotion();
+  function boot() {
+    buildLabels();
+    paintMotion();
 
-  if (motionBtn) {
-    motionBtn.addEventListener('click', function () {
-      if (speed > 0) {
-        lastSpeed = speed;
-        speed = 0;
-      } else {
-        speed = lastSpeed || 1;
-      }
-      last = performance.now();
-      paintMotion();
-    });
-  }
-
-  if (!initGL()) {
-    enableFallback();
-    return;
-  }
-
-  resize();
-  setupViewControls();
-  window.addEventListener('resize', scheduleResize);
-  window.addEventListener('load', scheduleResize);
-
-  if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(scheduleResize);
-  }
-  window.setTimeout(scheduleResize, 220);
-
-  if ('ResizeObserver' in window) {
-    resizeObserver = new ResizeObserver(scheduleResize);
-    resizeObserver.observe(scene);
-    resizeObserver.observe(wrap);
-  }
-
-  if ('IntersectionObserver' in window) {
-    intersectionObserver = new IntersectionObserver(function (entries) {
-      visible = entries[0].isIntersecting;
-    }, { threshold: 0.01 });
-    intersectionObserver.observe(scene);
-  }
-
-  scene.addEventListener('pointermove', function (event) {
-    if (event.pointerType === 'touch') return;
-    var rect = scene.getBoundingClientRect();
-    pointer.tx = ((event.clientX - rect.left) / Math.max(1, rect.width) - 0.5) * 2;
-    pointer.ty = ((event.clientY - rect.top) / Math.max(1, rect.height) - 0.5) * 2;
-  });
-
-  scene.addEventListener('pointerleave', function () {
-    pointer.tx = 0;
-    pointer.ty = 0;
-  });
-
-  canvas.addEventListener('webglcontextlost', function (event) {
-    event.preventDefault();
-    gl = null;
-    program = null;
-    uniforms = null;
-    enableFallback();
-  });
-
-  canvas.addEventListener('webglcontextrestored', function () {
-    if (initGL()) {
-      resize();
+    if (motionBtn) {
+      motionBtn.addEventListener('click', function () {
+        if (speed > 0) {
+          lastSpeed = speed;
+          speed = 0;
+        } else {
+          speed = lastSpeed || 1;
+        }
+        last = performance.now();
+        paintMotion();
+        if (speed > 0) {
+          start();
+        } else {
+          kick(1);
+        }
+      });
     }
-  });
 
-  window.requestAnimationFrame(frame);
+    if (!initGL()) {
+      enableFallback();
+      return;
+    }
+
+    refreshRect();
+    resize();
+    setupViewControls();
+    window.addEventListener('resize', scheduleResize);
+    window.addEventListener('load', scheduleResize);
+    window.addEventListener('scroll', scheduleRect, { passive: true });
+
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(scheduleResize);
+    }
+    window.setTimeout(scheduleResize, 220);
+
+    if ('ResizeObserver' in window) {
+      resizeObserver = new ResizeObserver(scheduleResize);
+      resizeObserver.observe(scene);
+      resizeObserver.observe(wrap);
+    }
+
+    if ('IntersectionObserver' in window) {
+      intersectionObserver = new IntersectionObserver(function (entries) {
+        visible = entries[0].isIntersecting;
+        if (visible) start(); else stop();
+      }, { threshold: 0.01 });
+      intersectionObserver.observe(scene);
+    }
+
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) stop();
+      else if (visible) start();
+    });
+
+    scene.addEventListener('pointerenter', refreshRect);
+    scene.addEventListener('pointermove', function (event) {
+      if (event.pointerType === 'touch' || reduceMotion) return;
+      if (!sceneRect) sceneRect = scene.getBoundingClientRect();
+      var rect = sceneRect;
+      pointer.tx = ((event.clientX - rect.left) / Math.max(1, rect.width) - 0.5) * 2;
+      pointer.ty = ((event.clientY - rect.top) / Math.max(1, rect.height) - 0.5) * 2;
+      kick(40);
+    });
+
+    scene.addEventListener('pointerleave', function () {
+      pointer.tx = 0;
+      pointer.ty = 0;
+      kick(30);
+    });
+
+    canvas.addEventListener('webglcontextlost', function (event) {
+      event.preventDefault();
+      stop();
+      gl = null;
+      program = null;
+      uniforms = null;
+      enableFallback();
+    });
+
+    canvas.addEventListener('webglcontextrestored', function () {
+      if (initGL()) {
+        refreshRect();
+        resize();
+        start();
+      }
+    });
+
+    window.addEventListener('pagehide', function () {
+      stop();
+      if (resizeObserver) resizeObserver.disconnect();
+      if (intersectionObserver) intersectionObserver.disconnect();
+      window.clearTimeout(resizeTimer);
+      if (rectTick) window.cancelAnimationFrame(rectTick);
+    });
+
+    settleFrames = Math.max(settleFrames, 2);
+    start();
+  }
+
+  /* Defer shader compilation past first paint so it never blocks FCP/LCP. */
+  window.requestAnimationFrame(function () {
+    window.requestAnimationFrame(boot);
+  });
 })();

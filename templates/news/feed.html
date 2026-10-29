@@ -3,7 +3,7 @@
 {% load news_extras %}
 {% block title %}AI News · Hermes{% endblock %}
 {% block extra_css %}
-<link href="{% static 'css/news-feed.css' %}?v=2" rel="stylesheet"/>
+<link href="{% static 'css/news-feed.css' %}?v=3" rel="stylesheet"/>
 {% endblock %}
 {% block content %}
 <div class="container-xl news-feed">
@@ -22,18 +22,6 @@
         <button type="button" class="btn btn-primary" id="refreshBtn">
           <i class="fas fa-rotate me-1" aria-hidden="true"></i> Refresh feeds
         </button>
-        <div class="dropdown">
-          <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="fas fa-download me-1" aria-hidden="true"></i> Export
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li><a class="dropdown-item" href="{% url 'news:news_export' 'csv' %}{% if filter_query %}?{{ filter_query }}{% endif %}">CSV</a></li>
-            <li><a class="dropdown-item" href="{% url 'news:news_export' 'xlsx' %}{% if filter_query %}?{{ filter_query }}{% endif %}">XLSX</a></li>
-          </ul>
-        </div>
-        <a class="btn btn-outline-secondary" href="{% url 'news:news_rss' %}{% if filter_query %}?{{ filter_query }}{% endif %}" target="_blank" rel="noopener">
-          <i class="fas fa-rss me-1" aria-hidden="true"></i> RSS
-        </a>
       </div>
     </div>
   </div>
@@ -50,8 +38,10 @@
           <div class="input-group">
             <span class="input-group-text"><i class="fas fa-search" aria-hidden="true"></i></span>
             <input type="search" name="q" id="q" value="{{ query }}" class="form-control"
-                   placeholder="Keywords or source"
+                   placeholder="Keywords or source" role="combobox" aria-autocomplete="list"
+                   aria-haspopup="listbox" aria-expanded="false" aria-controls="q-suggestions"
                    data-autocomplete-url="{% url 'news:news_suggest' %}" aria-label="Search headlines">
+            <ul id="q-suggestions" class="dh-autocomplete-list" role="listbox" style="display: none;"></ul>
           </div>
         </div>
         <div class="col-12 col-md-6 col-lg-3">
@@ -179,10 +169,10 @@
                 <div class="feed-article-meta mb-2">
                   <span class="badge feed-badge feed-badge-source">{{ a.source }}</span>
                   {% if a.is_read %}
-                    <span class="badge feed-badge feed-badge-read">Read</span>
+                    <span class="badge feed-badge feed-badge-read" data-article-state="read">Read</span>
                   {% endif %}
                   {% if a.is_saved %}
-                    <span class="badge feed-badge feed-badge-saved"><i class="fas fa-bookmark me-1" aria-hidden="true"></i>Saved</span>
+                    <span class="badge feed-badge feed-badge-saved" data-article-state="saved"><i class="fas fa-bookmark me-1" aria-hidden="true"></i>Saved</span>
                   {% endif %}
                   {% if a.published_at or a.fetched_at %}
                     <time class="text-muted small" data-relative datetime="{% if a.published_at %}{{ a.published_at|date:'c' }}{% else %}{{ a.fetched_at|date:'c' }}{% endif %}">
@@ -220,6 +210,7 @@
                         aria-pressed="{% if a.is_saved %}true{% else %}false{% endif %}"
                         aria-label="{% if a.is_saved %}Remove bookmark{% else %}Save for later{% endif %}"
                         title="{% if a.is_saved %}Remove bookmark{% else %}Save for later{% endif %}">
+                  <span class="visually-hidden" data-action-label>{% if a.is_saved %}Remove bookmark{% else %}Save for later{% endif %}</span>
                   <i class="fas fa-bookmark {% if a.is_saved %}text-yellow{% endif %}" aria-hidden="true"></i>
                 </button>
                 <button type="button" class="btn btn-ghost-secondary btn-icon feed-action-btn"
@@ -228,6 +219,7 @@
                         aria-pressed="{% if a.is_read %}true{% else %}false{% endif %}"
                         aria-label="{% if a.is_read %}Mark as unread{% else %}Mark as read{% endif %}"
                         title="{% if a.is_read %}Mark as unread{% else %}Mark as read{% endif %}">
+                  <span class="visually-hidden" data-action-label>{% if a.is_read %}Mark as unread{% else %}Mark as read{% endif %}</span>
                   <i class="fas fa-check-circle" aria-hidden="true"></i>
                 </button>
                 <a class="btn btn-ghost-secondary btn-icon feed-action-btn"
@@ -326,9 +318,6 @@
   <!-- BOTTOM UTILITY STRIP -->
   <div class="card mt-3">
     <div class="card-body d-flex flex-wrap align-items-center gap-2 feed-utility">
-      <a class="btn btn-sm btn-outline-secondary" href="{% url 'news:news_rss' %}{% if filter_query %}?{{ filter_query }}{% endif %}" target="_blank" rel="noopener">
-        <i class="fas fa-rss me-1" aria-hidden="true"></i> RSS
-      </a>
       <a class="btn btn-sm btn-outline-secondary" href="{% url 'news:news_api' %}">API</a>
       <span class="text-muted small ms-auto">
         Data refreshed
@@ -340,10 +329,12 @@
   <div id="newsFeedConfig" class="d-none"
        data-refresh-url="{% url 'news:news_refresh' %}"
        data-save-url-template="{% url 'news:news_toggle_save' 0 %}"
-       data-read-url-template="{% url 'news:news_toggle_read' 0 %}"></div>
+       data-read-url-template="{% url 'news:news_toggle_read' 0 %}"
+       data-cooldown-seconds="{{ refresh_cooldown_seconds }}"
+       data-cooldown-remaining="{{ refresh_cooldown_remaining }}"></div>
 
 </div>
 {% endblock %}
 {% block extra_js %}
-<script src="{% static 'js/news-feed.js' %}" defer></script>
+<script src="{% static 'js/news-feed.js' %}?v=4" defer></script>
 {% endblock %}

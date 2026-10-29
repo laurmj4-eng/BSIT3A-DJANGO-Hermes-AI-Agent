@@ -3,7 +3,7 @@
   <div class="container-xl">
     <div class="dh-topbar-inner">
 
-      <a class="dh-topbar-brand" href="{% url 'dashboard' %}" aria-label="Hermes AI News Agent — dashboard">
+      <a class="dh-topbar-brand" href="{% url 'dashboard' %}">
         <span class="dh-brand-mark"><i class="fa-solid fa-robot"></i></span>
         <span class="lh-1">
           <span class="dh-brand-name">Hermes<span class="text-warning">AI</span></span>
@@ -52,9 +52,7 @@
         <a class="dh-topbar-link {% if request.resolver_match.url_name == 'news_list' %}active{% endif %}"
            href="{% url 'news:news_list' %}"
            {% if request.resolver_match.url_name == 'news_list' %}aria-current="page"{% endif %}>AI News</a>
-        <a class="dh-topbar-link" href="#offcanvasSettings"
-           data-bs-toggle="offcanvas" data-bs-target="#offcanvasSettings"
-           aria-controls="offcanvasSettings">Theme settings</a>
+        <button type="button" class="dh-topbar-link" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSettings" aria-controls="offcanvasSettings">Theme settings</button>
         <form class="mt-2" action="{% url 'news:news_list' %}" method="get" role="search">
           <div class="input-group">
             <span class="input-group-text"><i class="fas fa-search"></i></span>

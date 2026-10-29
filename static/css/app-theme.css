@@ -427,8 +427,12 @@ textarea:focus-visible,
 }
 
 .dh-topbar-brand .dh-brand-sub {
-  color: rgba(148, 163, 184, 0.85);
+  color: rgba(203, 213, 225, 0.9);
   font-size: 0.66rem;
+}
+
+[data-bs-theme="light"] .dh-topbar-brand .dh-brand-sub {
+  color: var(--tblr-secondary);
 }
 
 .dh-topbar-nav {

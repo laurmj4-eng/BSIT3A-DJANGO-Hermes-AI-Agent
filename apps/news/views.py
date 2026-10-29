@@ -8,8 +8,10 @@ endpoint and the management command share one code path.
 from __future__ import annotations
 
 from datetime import timedelta
+from pathlib import Path
 from urllib.parse import urlparse
 
+from django.conf import settings
 from django.core.paginator import Paginator
 from django.db.models import Count, F, Q
 from django.http import (
@@ -29,6 +31,12 @@ from django.views.decorators.http import require_GET, require_POST
 
 from .exporters import article_rows, csv_bytes, xlsx_bytes
 from .feeds import FEEDS
+from .image_proxy import (
+    ImageProxyError,
+    fetch_remote_image,
+    read_cache,
+    write_cache,
+)
 from .models import Article, Topic
 from .services import RefreshLockError, latest_run, run_refresh
 
@@ -44,6 +52,19 @@ RSS_ITEM_LIMIT = 50
 SUGGEST_RESULT_LIMIT = 8
 SUGGEST_TOPIC_LIMIT = 5
 REFRESH_COOLDOWN_SECONDS = 60
+
+
+def refresh_cooldown_remaining() -> int:
+    """Seconds left before another refresh is allowed (0 when allowed)."""
+    last = latest_run()
+    if last and last.status in {"success", "partial"}:
+        remaining = REFRESH_COOLDOWN_SECONDS - int(
+            (timezone.now() - last.started_at).total_seconds()
+        )
+        if remaining > 0:
+            return remaining
+    return 0
+
 
 SORT_CHOICES = [
     ("newest", "Newest"),
@@ -309,6 +330,8 @@ def news_page(request):
         "filter_query": filter_query,
         "saved_toggle_query": saved_params.urlencode(),
         "unread_toggle_query": unread_params.urlencode(),
+        "refresh_cooldown_seconds": REFRESH_COOLDOWN_SECONDS,
+        "refresh_cooldown_remaining": refresh_cooldown_remaining(),
     }
     context.update(filter_ctx)
     return render(request, "news/feed.html", context)
@@ -321,21 +344,17 @@ def news_page(request):
 @require_POST
 def news_refresh(request):
     """Run a feed refresh and report its outcome as JSON."""
-    last = latest_run()
-    if last and last.status in {"success", "partial"}:
-        remaining = REFRESH_COOLDOWN_SECONDS - int(
-            (timezone.now() - last.started_at).total_seconds()
+    remaining = refresh_cooldown_remaining()
+    if remaining > 0:
+        response = JsonResponse(
+            {
+                "error": f"Refresh is cooling down. Try again in {remaining}s.",
+                "retry_after": remaining,
+            },
+            status=429,
         )
-        if remaining > 0:
-            response = JsonResponse(
-                {
-                    "error": f"Refresh is cooling down. Try again in {remaining}s.",
-                    "retry_after": remaining,
-                },
-                status=429,
-            )
-            response["Retry-After"] = str(remaining)
-            return response
+        response["Retry-After"] = str(remaining)
+        return response
 
     try:
         run = run_refresh(trigger="web")
@@ -415,6 +434,40 @@ def news_open(request, pk):
         request.session[READ_SESSION_KEY] = _clean_ids(sorted(read_ids))
 
     return redirect(article.url)
+
+
+@require_GET
+def news_image_proxy(request):
+    """Serve a stored article thumbnail from our own origin.
+
+    The URL must already belong to an article, so this is not a general
+    purpose proxy.  ``image_proxy`` validates the destination and the bytes;
+    successful responses are cached on disk for a week.
+    """
+    url = request.GET.get("u", "").strip()
+    if not url:
+        return HttpResponseBadRequest("Missing image URL")
+    if not Article.objects.filter(image_url=url).exists():
+        return HttpResponse(status=404)
+
+    cache_dir = Path(settings.MEDIA_ROOT) / "image-cache"
+    cached = read_cache(cache_dir, url)
+    if cached:
+        data, content_type = cached
+    else:
+        try:
+            data, content_type = fetch_remote_image(url)
+        except ImageProxyError as exc:
+            return HttpResponse(status=exc.status)
+        try:
+            write_cache(cache_dir, url, data, content_type)
+        except OSError:
+            pass
+
+    response = HttpResponse(data, content_type=content_type)
+    response["Cache-Control"] = "public, max-age=604800, immutable"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 # ---------------------------------------------------------------------------

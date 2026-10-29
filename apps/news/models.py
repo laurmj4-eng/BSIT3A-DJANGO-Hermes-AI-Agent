@@ -26,6 +26,8 @@ class Article(models.Model):
     title = models.CharField(max_length=500)
     url = models.URLField(max_length=1000)
     summary = models.TextField(blank=True)
+    # Harvested from the article's og:image; feeds ship no thumbnails.
+    image_url = models.URLField(max_length=500, blank=True, default='')
     source = models.CharField(max_length=120)
     feed_key = models.CharField(max_length=60, db_index=True)
 

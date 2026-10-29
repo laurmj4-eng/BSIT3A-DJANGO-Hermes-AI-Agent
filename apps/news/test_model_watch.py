@@ -108,11 +108,15 @@ class DashboardIntegrationTests(TestCase):
         labels = {m['key']: m['label'] for m in response.context['model_stats']}
         self.assertEqual(labels['gpt'], 'GPT-6.1')
         self.assertContains(response, 'GPT-6.1')
+        for model in response.context['model_stats']:
+            self.assertIsInstance(model['highlights'], list)
 
     def test_home_falls_back_to_curated_label(self):
         response = self.client.get(reverse('dashboard'))
         labels = {m['key']: m['label'] for m in response.context['model_stats']}
         self.assertEqual(labels['gpt'], 'GPT-6 Astra')
+        for model in response.context['model_stats']:
+            self.assertIsInstance(model['highlights'], list)
 
 
 class RefreshHookTests(TestCase):

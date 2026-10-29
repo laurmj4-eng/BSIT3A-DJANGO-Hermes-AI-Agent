@@ -84,32 +84,45 @@
 
     inputs.forEach(function (input) {
       let debounceTimer;
+      let activeRequest = 0;
+      let abortController = null;
       let highlightedIndex = -1;
 
       const minChars = 2;
       const debounceDelay = 200;
+      input.setAttribute('role', 'combobox');
+      input.setAttribute('aria-autocomplete', 'list');
+      input.setAttribute('aria-haspopup', 'listbox');
+      input.setAttribute('aria-expanded', 'false');
 
       function fetchResults(query) {
+        query = (query || input.value || '').trim();
         if (query.length < minChars) {
           hideAutocomplete(input);
           return;
         }
 
+        const requestId = ++activeRequest;
         const url = input.getAttribute('data-autocomplete-url');
-        fetch(url + '?q=' + encodeURIComponent(query))
+        if (abortController) {
+          abortController.abort();
+        }
+        abortController = new AbortController();
+        fetch(url + '?q=' + encodeURIComponent(query), { signal: abortController.signal })
           .then(function (response) {
-            if (!response.ok) {
-              hideAutocomplete(input);
-              return;
-            }
+            if (!response.ok) throw new Error('Autocomplete request failed');
             return response.json();
           })
           .then(function (data) {
+            if (requestId !== activeRequest || query !== input.value.trim()) return;
             renderAutocomplete(input, data);
           })
-          .catch(function () {
-            // Fail silently and hide
-            hideAutocomplete(input);
+          .catch(function (err) {
+            if (err && err.name === 'AbortError') return;
+            // Fail silently and hide only if this is still the current query.
+            if (requestId === activeRequest && query === input.value.trim()) {
+              hideAutocomplete(input);
+            }
           });
       }
 
@@ -118,10 +131,13 @@
         let listEl = wrapper ? wrapper.querySelector('.dh-autocomplete-list') : null;
 
         if (!listEl) {
-          listEl = document.createElement('div');
+          listEl = document.createElement('ul');
           listEl.className = 'dh-autocomplete-list';
+          listEl.id = input.getAttribute('aria-controls') || 'dh-autocomplete-' + Math.random().toString(36).slice(2);
           listEl.setAttribute('role', 'listbox');
+          input.setAttribute('aria-controls', listEl.id);
           if (wrapper) {
+            wrapper.style.position = 'relative';
             wrapper.appendChild(listEl);
           } else {
             input.parentNode.appendChild(listEl);
@@ -133,16 +149,21 @@
 
         if (!data || !data.results || data.results.length === 0) {
           listEl.style.display = 'none';
+          input.setAttribute('aria-expanded', 'false');
+          input.removeAttribute('aria-activedescendant');
           return;
         }
 
         listEl.style.display = 'block';
+        input.setAttribute('aria-expanded', 'true');
 
         data.results.forEach(function (item, idx) {
           const li = document.createElement('li');
           li.setAttribute('role', 'option');
+          li.setAttribute('aria-selected', 'false');
+          li.id = listEl.id + '-option-' + idx;
           li.setAttribute('data-index', idx);
-          li.tabIndex = 0;
+          li.tabIndex = -1;
           li.innerHTML = `<span class="dh-autocomplete-label">${escapeHtml(item.label || item.title || item.name || '')}</span>`;
           li.addEventListener('click', function () {
             selectAutocompleteItem(input, item);
@@ -170,18 +191,21 @@
         }
       }
 
-      function showAutocomplete(inputEl) {
-        const query = inputEl.value || '';
-        fetchResults(query);
-      }
-
       function hideAutocomplete(inputEl) {
         const listEl = inputEl.parentElement
           ? inputEl.parentElement.querySelector('.dh-autocomplete-list')
           : null;
+        if (abortController) {
+          abortController.abort();
+          abortController = null;
+        }
+        clearTimeout(debounceTimer);
+        activeRequest += 1;
         if (listEl) {
           listEl.style.display = 'none';
         }
+        inputEl.setAttribute('aria-expanded', 'false');
+        inputEl.removeAttribute('aria-activedescendant');
       }
 
       function escapeHtml(text) {
@@ -196,6 +220,11 @@
           item.classList.toggle('highlighted', active);
           item.setAttribute('aria-selected', active ? 'true' : 'false');
         });
+        if (items[index]) {
+          input.setAttribute('aria-activedescendant', items[index].id);
+        } else {
+          input.removeAttribute('aria-activedescendant');
+        }
         if (items[index] && typeof items[index].scrollIntoView === 'function') {
           items[index].scrollIntoView({ block: 'nearest' });
         }
@@ -205,7 +234,11 @@
       input.addEventListener('input', function () {
         highlightedIndex = -1;
         clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(fetchResults, debounceDelay);
+        hideAutocomplete(input);
+        if (input.value.trim().length < minChars) return;
+        debounceTimer = setTimeout(function () {
+          fetchResults(input.value);
+        }, debounceDelay);
       });
 
       // Keyboard navigation
@@ -235,7 +268,7 @@
           } else {
             hideAutocomplete(input);
           }
-        } else if (e.key === 'Escape') {
+        } else if (e.key === 'Escape' || e.key === 'Tab') {
           hideAutocomplete(input);
         }
       });
@@ -245,6 +278,11 @@
         if (e.target !== input && !input.parentNode.contains(e.target)) {
           hideAutocomplete(input);
         }
+      });
+
+      // Clear pending debounce when focus leaves
+      input.addEventListener('blur', function () {
+        clearTimeout(debounceTimer);
       });
     });
   }

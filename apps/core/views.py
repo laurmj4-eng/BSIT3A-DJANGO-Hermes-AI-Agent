@@ -124,12 +124,64 @@ MODEL_PLATFORMS = [
 ]
 
 
+def _pick_highlights(articles, keyword_query, limit=3, scan=40):
+    """Newest stories for one model, de-duplicated by normalised title.
+
+    Google News mirrors the same story under different redirect URLs, so the
+    newest rows can repeat one headline. Scan a wider window and keep the first
+    occurrence of each title, which also hides duplicates already in the DB.
+
+    Stories that carry a harvested thumbnail are preferred inside that window so
+    the shelf shows real photography wherever the source allowed it; imageless
+    rows still fill the remaining slots, newest first.
+    """
+    picked = []
+    seen = set()
+    rows = list(
+        articles.filter(keyword_query)
+        .exclude(title='')
+        .order_by('-published_at', '-fetched_at')
+        .values('pk', 'title', 'source', 'published_at', 'image_url')[:scan]
+    )
+
+    def has_usable_image(row):
+        url = (row['image_url'] or '').lower().split('?', 1)[0]
+        return bool(url) and not url.endswith('.gif')
+
+    def take(candidates):
+        for row in candidates:
+            key = ' '.join(row['title'].split()).casefold()
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            picked.append({
+                'pk': row['pk'],
+                'title': row['title'],
+                'source': row['source'],
+                'published_at': row['published_at'],
+                'image_url': row['image_url'] or '',
+                'image_ok': has_usable_image(row),
+            })
+            if len(picked) == limit:
+                return True
+        return False
+
+    if take([row for row in rows if has_usable_image(row)]):
+        return picked
+    take([row for row in rows if not has_usable_image(row)])
+    return picked
+
+
 def _model_stats(articles):
     """Count articles per model and attach its originating platform.
 
     Labels come from the curated ``MODEL_PLATFORMS`` roster, then get
     overridden by the newest model release the refresh pipeline detected for
     that platform (``PlatformModel``), so the dashboard keeps itself current.
+
+    Each entry also carries ``highlights``: the top three matching stories,
+    reduced to plain dicts (``pk``, ``title``, ``source``, ``published_at``) so
+    they stay safe for Django's ``json_script`` filter.
     """
     auto_models = current_models()
     stats = []
@@ -164,6 +216,7 @@ def _model_stats(articles):
                 'detected_version': detected.get('version', ''),
                 'detected_source_url': detected.get('source_url', ''),
                 'total': articles.filter(keyword_query).count(),
+                'highlights': _pick_highlights(articles, keyword_query),
             })
     return stats
 

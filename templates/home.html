@@ -1,8 +1,8 @@
 {% extends "theme/base.html" %}
 {% load static %}
 {% block extra_css %}
-<link href="{% static 'css/cosmic-hero.css' %}?v=7" rel="stylesheet"/>
-<link href="{% static 'css/dashboard.css' %}?v=4" rel="stylesheet"/>
+<link href="{% static 'css/cosmic-hero.css' %}?v=8" rel="stylesheet"/>
+<link href="{% static 'css/dashboard.css' %}?v=10" rel="stylesheet"/>
 {% endblock %}
 {% block content %}
 <div class="container-xl dash-page">
@@ -177,33 +177,68 @@
   </section>
 
   {# ------------------------------------------------------------------ #}
-  {# 3b. MODEL COVERAGE — original model + platform logos                #}
+  {# 3b. MODEL COVERAGE — one column of platform shelves                  #}
   {# ------------------------------------------------------------------ #}
   <section class="dash-model-section" id="model-coverage" aria-labelledby="dash-models-title" data-reveal>
     <div class="dash-section-head">
       <div>
         <h2 class="dash-section-title" id="dash-models-title">Coverage by platform</h2>
+        <p class="dash-section-sub">Top stories per model, from the feeds already tracked.</p>
       </div>
+      <span class="dash-section-count">{{ model_stats|length }} platform{{ model_stats|length|pluralize }}</span>
     </div>
-    <div class="dash-model-grid">
+    <div class="dash-shelves">
       {% for m in model_stats %}
-        <a class="dash-model-card" href="{% url 'news:news_list' %}?q={{ m.query }}" style="--model-color: {{ m.color }}" title="{{ m.desc }}" aria-label="{{ m.label }} by {{ m.platform_name }} — {{ m.total }} articles. View news.">
-          <span class="dash-model-card-top">
-            <span class="dash-model-origin">
-              <span class="dash-model-origin-logo"><img src="{% static m.platform_logo %}" alt="" loading="lazy"{% if m.platform_mono %} class="dash-brand-mono"{% endif %}></span>
-              {{ m.platform_name }}
-            </span>
-            <span class="dash-model-count">{{ m.total }}</span>
-          </span>
-          <span class="dash-model-main">
-            <span class="dash-model-logo"><img src="{% static m.logo %}" alt="" loading="lazy"{% if m.mono %} class="dash-brand-mono"{% endif %}></span>
-            <span class="dash-model-copy">
-              <span class="dash-model-name">{{ m.label }}</span>
-              <span class="dash-model-desc">{{ m.desc }}</span>
-            </span>
-          </span>
-          <span class="dash-model-action">View news <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
-        </a>
+        <article class="dash-shelf{% if forloop.first %} is-open{% endif %}" style="--model-color: {{ m.color }}">
+          <h3 class="dash-shelf-heading">
+            <button class="dash-shelf-toggle" type="button"
+                    id="shelf-head-{{ m.key }}"
+                    aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}"
+                    aria-controls="shelf-panel-{{ m.key }}">
+              <span class="dash-shelf-logo"><img src="{% static m.platform_logo %}" alt="" loading="lazy" class="{% if m.platform_mono %}dash-brand-mono{% endif %}"></span>
+              <span class="dash-shelf-id">
+                <span class="dash-shelf-model">{{ m.label }}</span>
+                <span class="dash-shelf-platform">{{ m.platform_name }}</span>
+              </span>
+              <span class="dash-shelf-count">{{ m.total }} stor{{ m.total|pluralize:"y,ies" }}</span>
+              <span class="dash-shelf-chevron" aria-hidden="true"><i class="fas fa-chevron-down"></i></span>
+            </button>
+          </h3>
+          <div class="dash-shelf-panel" id="shelf-panel-{{ m.key }}"{% if not forloop.first %} hidden{% endif %}>
+            {% if m.highlights %}
+              <ul class="dash-stories" tabindex="0" aria-label="Top {{ m.highlights|length }} stories for {{ m.label }}">
+                {% for a in m.highlights %}
+                  <li class="dash-story-item">
+                    <a class="dash-story" href="{% url 'news:news_open' a.pk %}" target="_blank" rel="noopener">
+                      <span class="dash-story-media{% if a.image_ok %} has-photo{% endif %}" data-platform="{{ m.label }}" aria-hidden="true">
+                        {% if a.image_ok %}
+                          <img class="dash-story-photo" src="{% url 'news:image_proxy' %}?u={{ a.image_url|urlencode }}" alt="" loading="lazy" decoding="async" onerror="this.parentNode.classList.remove('has-photo'); this.remove();">
+                        {% endif %}
+                        <span class="dash-story-source-chip">{{ a.source }}</span>
+                        <img class="dash-story-mark{% if m.mono %} dash-brand-mono{% endif %}" src="{% static m.logo %}" alt="" loading="lazy">
+                      </span>
+                      <span class="dash-story-body">
+                        <span class="dash-story-title">{{ a.title }}</span>
+                        <span class="dash-story-meta">
+                          <span class="dash-story-source">{{ a.source }}</span>
+                          {% if a.published_at %}
+                            <span aria-hidden="true">·</span>
+                            <time data-relative datetime="{{ a.published_at|date:'c' }}" title="{{ a.published_at }}">{{ a.published_at|timesince }} ago</time>
+                          {% endif %}
+                        </span>
+                      </span>
+                    </a>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p class="dash-shelf-empty">No stories classified for {{ m.label }} yet.</p>
+            {% endif %}
+            <a class="dash-shelf-all" href="{% url 'news:news_list' %}?q={{ m.query }}" title="{{ m.desc }}">
+              View all {{ m.total }} stor{{ m.total|pluralize:"y,ies" }} <i class="fas fa-arrow-right" aria-hidden="true"></i>
+            </a>
+          </div>
+        </article>
       {% empty %}
         <p class="dash-model-empty">No model data yet. Run a refresh to classify articles.</p>
       {% endfor %}
@@ -343,72 +378,6 @@
   </div>
 
   {# ------------------------------------------------------------------ #}
-  {# 5. LOWER GRID — refresh run / source health                         #}
-  {# ------------------------------------------------------------------ #}
-  <div class="dash-grid dash-grid-lower">
-
-    <section class="card dash-card" aria-labelledby="dash-run-title" data-reveal>
-      <div class="card-header">
-        <h2 class="card-title" id="dash-run-title">Latest refresh</h2>
-        {% if latest_run %}
-          <span class="badge dash-run-badge dash-run-{{ latest_run.status }}">{{ latest_run.status }}</span>
-        {% endif %}
-      </div>
-      <div class="card-body">
-        {% if latest_run %}
-          <div class="dash-run-times">
-            <span>Started <time data-relative datetime="{{ latest_run.started_at|date:'c' }}" title="{{ latest_run.started_at }}">{{ latest_run.started_at|timesince }} ago</time></span>
-            {% if latest_run.finished_at %}
-              <span>Finished <time data-relative datetime="{{ latest_run.finished_at|date:'c' }}" title="{{ latest_run.finished_at }}">{{ latest_run.finished_at|timesince }} ago</time></span>
-            {% endif %}
-          </div>
-          <dl class="dash-run-stats">
-            <div><dt>Created</dt><dd>{{ latest_run.created_count }}</dd></div>
-            <div><dt>Updated</dt><dd>{{ latest_run.updated_count }}</dd></div>
-            <div><dt>Total</dt><dd>{{ latest_run.total_articles }}</dd></div>
-            <div><dt>Duration</dt><dd>{% if latest_run.duration_seconds is not None %}{{ latest_run.duration_seconds|floatformat:1 }}s{% else %}—{% endif %}</dd></div>
-            <div><dt>Errors</dt><dd>{{ latest_run.errors|length }}</dd></div>
-          </dl>
-          {% if latest_run.errors %}
-            <details class="dash-run-errors">
-              <summary>{{ latest_run.errors|length }} feed error{{ latest_run.errors|length|pluralize }}</summary>
-              <ul>
-                {% for e in latest_run.errors %}
-                  <li><strong>{{ e.source|default:e.key|default:"Feed" }}</strong> — {{ e.error }}</li>
-                {% endfor %}
-              </ul>
-            </details>
-          {% endif %}
-        {% else %}
-          <p class="dash-run-none mb-0">No refresh yet.</p>
-        {% endif %}
-      </div>
-    </section>
-
-    <section class="card dash-card" aria-labelledby="dash-health-title" data-reveal>
-      <div class="card-header">
-        <h2 class="card-title" id="dash-health-title">Source health</h2>
-      </div>
-      <div class="card-body">
-        <ul class="dash-health">
-          {% for s in source_health|slice:':8' %}
-            <li class="dash-health-item" {% if s.error %}title="{{ s.error|striptags|truncatechars:160 }}"{% endif %}>
-              <span class="dash-health-dot dash-health-{{ s.status }}" aria-hidden="true"></span>
-              <span class="dash-health-text">
-                <span class="dash-health-status dash-health-text-{{ s.status }}">{{ s.status|title }}</span>
-                <span class="dash-health-name">{{ s.name }}</span>
-              </span>
-              <span class="dash-health-count">{{ s.total }}</span>
-            </li>
-          {% empty %}
-            <li class="dash-empty dash-empty-sm"><p class="dash-empty-sub mb-0">No sources configured.</p></li>
-          {% endfor %}
-        </ul>
-      </div>
-    </section>
-  </div>
-
-  {# ------------------------------------------------------------------ #}
   {# 6. FOOTER NOTE                                                      #}
   {# ------------------------------------------------------------------ #}
   <div class="dash-footnote d-print-none" data-reveal>
@@ -435,6 +404,6 @@
     window.HERMES_MODELS = JSON.parse(document.getElementById('hermes-models').textContent);
   } catch (e) { window.HERMES_MODELS = []; }
 </script>
-<script src="{% static 'js/cosmic-hero.js' %}?v=5"></script>
-<script src="{% static 'js/dashboard.js' %}?v=2" defer></script>
+<script src="{% static 'js/cosmic-hero.js' %}?v=6"></script>
+<script src="{% static 'js/dashboard.js' %}?v=4" defer></script>
 {% endblock %}

@@ -178,7 +178,7 @@
 
 .news-feed .feed-badge-read {
   font-weight: 500;
-  color: var(--tblr-secondary);
+  color: var(--tblr-body-color);
 }
 
 .news-feed .feed-article-actions {
@@ -213,6 +213,7 @@
 
 /* Topic chips inside cards */
 .news-feed .feed-topic-chip {
+  min-height: 1.75rem;
   font-size: 0.72rem;
 }
 
@@ -233,11 +234,6 @@
   background: var(--tblr-bg-surface-secondary);
   color: var(--tblr-primary);
   font-size: 1.5rem;
-}
-
-/* Bottom utility strip */
-.news-feed .feed-utility {
-  gap: 0.5rem;
 }
 
 /* Reduced motion: stop decorative motion, keep state legible. */

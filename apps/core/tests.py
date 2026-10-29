@@ -197,3 +197,78 @@ class DashboardContextTests(TestCase):
         self.assertEqual(models['groq']['total'], 1)
         self.assertContains(response, 'icons/models/model-claude.svg')
         self.assertContains(response, 'icons/models/platform-groq.svg')
+
+    def test_model_coverage_highlights_top_three_newest(self):
+        self._article('Claude Opus 5.5 preview', 'Src A', FEEDS[0]['key'], days_ago=0)
+        self._article('Anthropic ships Claude 4.5', 'Src A', FEEDS[0]['key'], days_ago=1)
+        self._article('Claude Sonnet 5 update', 'Src B', FEEDS[1]['key'], days_ago=2)
+        self._article('Opus 4.5 research preview', 'Src B', FEEDS[1]['key'], days_ago=3)
+
+        response = self.client.get(reverse('dashboard'))
+        models = {m['key']: m for m in response.context['model_stats']}
+
+        highlights = models['claude']['highlights']
+        self.assertEqual(len(highlights), 3)
+        self.assertEqual(
+            [h['title'] for h in highlights],
+            ['Claude Opus 5.5 preview', 'Anthropic ships Claude 4.5', 'Claude Sonnet 5 update'],
+        )
+        for highlight in highlights:
+            self.assertEqual(
+                set(highlight.keys()),
+                {'pk', 'title', 'source', 'published_at', 'image_url', 'image_ok'},
+            )
+            self.assertIsInstance(highlight['pk'], int)
+            self.assertIsInstance(highlight['image_ok'], bool)
+
+    def test_model_coverage_highlights_deduplicate_titles(self):
+        now = timezone.now()
+        dup_title = 'Claude launches the same mirrored story'
+        newest_dup = Article.objects.create(
+            title=dup_title,
+            url='https://news.google.com/rss/articles/variant-1',
+            summary='mirror one',
+            source='Google News',
+            feed_key=FEEDS[0]['key'],
+            published_at=now,
+        )
+        Article.objects.create(
+            title=dup_title,
+            url='https://news.google.com/rss/articles/variant-2',
+            summary='mirror two',
+            source='Google News',
+            feed_key=FEEDS[0]['key'],
+            published_at=now - timedelta(days=1),
+        )
+        self._article('Claude backfill story two days old', 'Src A', FEEDS[0]['key'], days_ago=2)
+        self._article('Anthropic backfill story three days old', 'Src B', FEEDS[1]['key'], days_ago=3)
+
+        response = self.client.get(reverse('dashboard'))
+        models = {m['key']: m for m in response.context['model_stats']}
+
+        highlights = models['claude']['highlights']
+        self.assertEqual(len(highlights), 3)
+
+        titles = [h['title'] for h in highlights]
+        self.assertEqual(titles.count(dup_title), 1)
+        self.assertEqual(len({' '.join(t.split()).casefold() for t in titles}), 3)
+        self.assertEqual(highlights[0]['pk'], newest_dup.pk)
+
+    def test_model_coverage_highlights_empty_when_no_articles(self):
+        Article.objects.all().delete()
+        response = self.client.get(reverse('dashboard'))
+        self.assertEqual(response.status_code, 200)
+        for entry in response.context['model_stats']:
+            self.assertEqual(entry['highlights'], [])
+
+    def test_model_coverage_renders_shelf_markup(self):
+        self._article('Claude launches a new reasoning model', 'Src A', FEEDS[0]['key'])
+        response = self.client.get(reverse('dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'dash-shelf')
+        self.assertContains(response, 'dash-shelf-toggle')
+        self.assertContains(response, 'aria-expanded="true"')
+        self.assertContains(response, 'dash-stories')
+        self.assertContains(response, 'dash-story-title')
+        self.assertContains(response, 'dash-shelf-all')
+        self.assertNotContains(response, 'dash-model-card')

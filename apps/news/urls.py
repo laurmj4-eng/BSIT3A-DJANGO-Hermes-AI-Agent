@@ -10,6 +10,7 @@ urlpatterns = [
     path('save/<int:pk>/', views.news_toggle_save, name='news_toggle_save'),
     path('read/<int:pk>/', views.news_toggle_read, name='news_toggle_read'),
     path('open/<int:pk>/', views.news_open, name='news_open'),
+    path('image-proxy/', views.news_image_proxy, name='image_proxy'),
     path('export/<str:fmt>/', views.news_export, name='news_export'),
     path('rss/', views.news_rss, name='news_rss'),
     path('api/articles/', views.news_api, name='news_api'),

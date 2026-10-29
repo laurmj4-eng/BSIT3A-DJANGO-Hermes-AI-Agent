@@ -201,9 +201,52 @@
   }
 
   /* ---------------------------------------------------------------
-     Boot
-     --------------------------------------------------------------- */
+      Model shelves — accordion toggles (hidden attribute only)
+      --------------------------------------------------------------- */
+  function setShelf(shelf, open) {
+    var btn = shelf.querySelector('.dash-shelf-toggle');
+    var panelId = btn ? btn.getAttribute('aria-controls') : null;
+    var panel = panelId ? document.getElementById(panelId) : null;
+    if (!panel) { return; }
+    if (open) {
+      shelf.classList.add('is-open');
+      if (btn) { btn.setAttribute('aria-expanded', 'true'); }
+      panel.removeAttribute('hidden');
+    } else {
+      shelf.classList.remove('is-open');
+      if (btn) { btn.setAttribute('aria-expanded', 'false'); }
+      panel.setAttribute('hidden', '');
+    }
+  }
+
+  function initModelShelves() {
+    var shelves = Array.prototype.slice.call(
+      document.querySelectorAll('.dash-shelves .dash-shelf')
+    );
+    if (!shelves.length) { return; }
+
+    shelves.forEach(function (shelf) {
+      var btn = shelf.querySelector('.dash-shelf-toggle');
+      if (!btn) { return; }
+      btn.addEventListener('click', function () {
+        var isOpen = shelf.classList.contains('is-open');
+        if (isOpen) {
+          setShelf(shelf, false);
+          return;
+        }
+        shelves.forEach(function (other) {
+          if (other !== shelf) { setShelf(other, false); }
+        });
+        setShelf(shelf, true);
+      });
+    });
+  }
+
+  /* ---------------------------------------------------------------
+      Boot
+      --------------------------------------------------------------- */
   initRefresh();
   initSaveButtons();
   initRelativeTimes();
+  initModelShelves();
 })();

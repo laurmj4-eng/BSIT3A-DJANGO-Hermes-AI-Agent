@@ -1,4 +1,4 @@
-const CACHE = 'hermes-static-v9';
+const CACHE = 'hermes-static-v11';
 
 const CORE_URLS = [
   '/',
@@ -70,6 +70,7 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/admin/')
       || url.pathname.startsWith('/news/refresh/')
       || url.pathname.startsWith('/news/api/')
+      || url.pathname.startsWith('/news/image-proxy/')
       || url.pathname.startsWith('/news/export/')) {
     event.respondWith(fetch(event.request));
     return;

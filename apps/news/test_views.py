@@ -76,6 +76,11 @@ class NewsPageTests(TestCase):
         self.assertEqual(response.context["total"], 1)
         self.assertEqual(response.context["feed_count"], len(FEEDS))
         self.assertEqual(response.context["articles"].number, 1)
+        self.assertContains(response, 'id="refreshAlert" class="alert d-none mt-3" role="status" aria-live="polite"')
+        self.assertContains(response, 'role="combobox" aria-autocomplete="list"')
+        self.assertContains(response, 'aria-controls="q-suggestions"')
+        self.assertContains(response, "data-action-label>Save for later</span>")
+        self.assertContains(response, "data-action-label>Mark as read</span>")
 
         # source_options are dicts, source_choices stay (key, name) tuples.
         options = response.context["source_options"]
@@ -542,6 +547,44 @@ class QuerystringTagTests(TestCase):
 
         self.assertEqual(querystring({}, q="ai"), "q=ai")
         self.assertEqual(querystring({}), "")
+
+
+class NewsPageCooldownAndControlsTests(TestCase):
+    def test_page_exposes_active_cooldown(self):
+        run = RefreshRun.objects.create(status="success", finished_at=timezone.now())
+        RefreshRun.objects.filter(pk=run.pk).update(started_at=timezone.now())
+
+        response = self.client.get(reverse("news:news_list"))
+
+        self.assertEqual(response.context["refresh_cooldown_seconds"], 60)
+        self.assertGreater(response.context["refresh_cooldown_remaining"], 0)
+        self.assertContains(response, 'data-cooldown-seconds="60"')
+        self.assertContains(response, 'id="newsFeedConfig"')
+        self.assertRegex(
+            response.content.decode(), r'data-cooldown-remaining="[1-9][0-9]*"'
+        )
+
+    def test_page_without_history_has_no_cooldown(self):
+        response = self.client.get(reverse("news:news_list"))
+
+        self.assertEqual(response.context["refresh_cooldown_remaining"], 0)
+        self.assertContains(response, 'data-cooldown-remaining="0"')
+
+    def test_failed_run_does_not_cool_down(self):
+        run = RefreshRun.objects.create(status="failed", finished_at=timezone.now())
+        RefreshRun.objects.filter(pk=run.pk).update(started_at=timezone.now())
+
+        response = self.client.get(reverse("news:news_list"))
+
+        self.assertEqual(response.context["refresh_cooldown_remaining"], 0)
+
+    def test_page_has_no_export_or_rss_controls(self):
+        make_article()
+
+        response = self.client.get(reverse("news:news_list"))
+
+        self.assertNotContains(response, "Export")
+        self.assertNotContains(response, reverse("news:news_rss"))
 
 
 class CsrfTests(TestCase):
