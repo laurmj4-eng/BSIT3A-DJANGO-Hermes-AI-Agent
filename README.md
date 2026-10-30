@@ -8,32 +8,9 @@
 
 ---
 
-## Project Demo (Video Evidence)
+## Video
 
-**▶ [Play the screen recording](https://laurmj4-eng.github.io/BSIT3A-DJANGO-Hermes-AI-Agent/evidence/hermes-ai-agent-demo-2026-10-30.mp4)** —
-streams directly in the browser (1:02 min, H.264 MP4, 35.9 MB).
-
-Screen recording of the Hermes AI Agent running locally, captured on **30 October 2026**
-(Brave browser, Django development server at `http://127.0.0.1:8000/`).
-
-| Item | Value |
-| --- | --- |
-| Stream (plays in browser) | https://laurmj4-eng.github.io/BSIT3A-DJANGO-Hermes-AI-Agent/evidence/hermes-ai-agent-demo-2026-10-30.mp4 |
-| Repository copy | `docs/evidence/hermes-ai-agent-demo-2026-10-30.mp4` |
-| Original capture | `C:\Users\emili\Videos\Captures\Hermes AI News Agent - Brave 2026-10-30 20-48-07.mp4` |
-| Recorded | 2026-10-30, 20:48 local time |
-| Duration | 1:02 (62.6 s), 1376×728, H.264/AVC + AAC |
-| Size | 35.9 MB (37,623,153 bytes) |
-| SHA-256 | `070ec9eaa84f16fa15714db0b9fb3798c75228de5353943babc7b08c959fcc66` |
-| Capture method | Windows Xbox Game Bar (`Win + Alt + R`), saved to `Videos\Captures` |
-| Recorded with | `.venv\Scripts\python.exe manage.py runserver` |
-
-> GitHub's file page offers only a **Download** button for MP4 files. Use the streaming
-> link above to play it in the browser; the repository copy stays as the archived original.
-
-The file is stored unchanged from the original capture; verify it after cloning with
-`certutil -hashfile docs\evidence\hermes-ai-agent-demo-2026-10-30.mp4 SHA256`
-or `sha256sum` on Linux/macOS.
+[Play the video](https://laurmj4-eng.github.io/BSIT3A-DJANGO-Hermes-AI-Agent/evidence/hermes-ai-agent-demo-2026-10-30.mp4)
 
 ---
 
