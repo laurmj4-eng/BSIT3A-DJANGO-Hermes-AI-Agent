@@ -168,8 +168,3 @@ The system ships with:
 | Feed parsing | Python standard library only (`urllib` + `xml.etree`) |
 | Excel export | Hand-built OOXML package (`zipfile` + XML) |
 | PWA | Service worker + web app manifest |
-
-> The feed reader deliberately uses **no third-party parsing library** — only
-> `urllib.request` and `xml.etree.ElementTree` from the standard library — and
-> the XLSX exporter writes OpenXML directly, keeping the runtime dependencies
-> to Django and the MySQL driver.
