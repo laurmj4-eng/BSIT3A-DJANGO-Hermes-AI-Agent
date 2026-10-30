@@ -153,8 +153,8 @@
 .cosmos-tool {
   display: inline-grid;
   place-items: center;
-  width: 31px;
-  height: 30px;
+  width: 34px;
+  height: 32px;
   padding: 0;
   border: 0;
   border-radius: 6px;
@@ -174,7 +174,7 @@
 }
 
 .cosmos-tool:focus-visible {
-  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.7);
+  box-shadow: 0 0 0 2px rgba(125, 211, 252, 0.9);
 }
 
 .cosmos-tool-sep {
@@ -211,7 +211,7 @@
 
 .cosmos-speed input {
   width: 84px;
-  height: 18px;
+  height: 28px;
   margin: 0;
   accent-color: #38bdf8;
   cursor: pointer;
@@ -271,7 +271,7 @@
   position: relative;
   height: 400px;
   cursor: grab;
-  touch-action: none;
+  touch-action: pan-y;
   outline: none;
 }
 
@@ -280,7 +280,7 @@
 }
 
 #orbit-wrap:focus-visible {
-  outline: 1px solid rgba(125, 211, 252, 0.5);
+  outline: 2px solid rgba(125, 211, 252, 0.85);
   outline-offset: 4px;
   border-radius: 12px;
 }
@@ -356,7 +356,7 @@
   z-index: 4;
   left: 1.75rem;
   bottom: 0.72rem;
-  color: rgba(148, 180, 214, 0.42);
+  color: rgba(190, 214, 237, 0.72);
   font-size: 0.56rem;
   font-weight: 500;
   letter-spacing: 0.14em;
@@ -375,6 +375,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-height: 28px;
   padding: 4px 10px 4px 8px;
   border: 1px solid var(--orbit-color);
   border-radius: 999px;
@@ -399,6 +400,14 @@
   transform-origin: center center;
 }
 
+/* Expand the clickable area without making the pill visually larger. */
+.orbit-label::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: inherit;
+}
+
 .orbit-label:hover,
 .orbit-label:focus-visible {
   color: #ffffff;
@@ -408,7 +417,11 @@
     0 10px 26px rgba(0, 0, 0, 0.62),
     0 0 28px -6px var(--orbit-color),
     inset 0 1px 0 rgba(255, 255, 255, 0.22);
-  outline: none;
+}
+
+.orbit-label:focus-visible {
+  outline: 2px solid var(--orbit-color);
+  outline-offset: 3px;
 }
 
 .orbit-label .orbit-pip {
@@ -421,7 +434,7 @@
 }
 
 .orbit-label.is-front { opacity: 1; }
-.orbit-label.is-behind { opacity: 0.38; }
+.orbit-label.is-behind { opacity: 0.55; }
 
 #orbit-tip {
   position: absolute;
@@ -493,6 +506,10 @@
 @keyframes fallbackGalaxy {
   from { transform: translate(-50%, -50%) rotate(-17deg); }
   to { transform: translate(-50%, -50%) rotate(343deg); }
+}
+
+.hermes-cosmos.is-paused.is-no-webgl::before {
+  animation-play-state: paused;
 }
 
 .hermes-orbit-card:fullscreen,

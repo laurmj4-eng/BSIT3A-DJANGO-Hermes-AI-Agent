@@ -1,7 +1,7 @@
 {% extends "theme/base.html" %}
 {% load static %}
 {% block extra_css %}
-<link href="{% static 'css/cosmic-hero.css' %}?v=8" rel="stylesheet"/>
+<link href="{% static 'css/cosmic-hero.css' %}?v=9" rel="stylesheet"/>
 <link href="{% static 'css/dashboard.css' %}?v=10" rel="stylesheet"/>
 {% endblock %}
 {% block content %}
@@ -112,8 +112,13 @@
           </div>
 
           <div class="col-lg-7 cosmos-visual">
-            <div id="orbit-wrap" tabindex="0"
-                 aria-label="Live AI model galaxy. Drag to orbit, scroll or pinch to zoom.">
+            <p id="orbit-instructions" class="visually-hidden">
+              Interactive galaxy. Drag to orbit, scroll or pinch to zoom. With the galaxy focused,
+              use Left and Right arrows to rotate, Up and Down arrows to tilt, plus and minus to
+              zoom, and 0 to reset.
+            </p>
+            <div id="orbit-wrap" tabindex="0" role="region"
+                 aria-label="Live AI model galaxy" aria-describedby="orbit-instructions">
               <div id="orbit-labels"></div>
               <div id="orbit-tip" class="d-none"></div>
               <div class="cosmos-hint" id="cosmos-hint" aria-hidden="true">
@@ -404,6 +409,6 @@
     window.HERMES_MODELS = JSON.parse(document.getElementById('hermes-models').textContent);
   } catch (e) { window.HERMES_MODELS = []; }
 </script>
-<script src="{% static 'js/cosmic-hero.js' %}?v=6"></script>
+<script src="{% static 'js/cosmic-hero.js' %}?v=7"></script>
 <script src="{% static 'js/dashboard.js' %}?v=4" defer></script>
 {% endblock %}

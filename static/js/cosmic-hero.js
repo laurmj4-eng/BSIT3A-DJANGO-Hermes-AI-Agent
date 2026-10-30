@@ -40,8 +40,10 @@
   var cosmosHint = document.getElementById('cosmos-hint');
 
   var models = (window.HERMES_MODELS || []).slice(0, 7);
-  var reduceMotion = window.matchMedia &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var motionQuery = window.matchMedia
+    ? window.matchMedia('(prefers-reduced-motion: reduce)')
+    : null;
+  var reduceMotion = motionQuery ? motionQuery.matches : false;
   var speed = reduceMotion ? 0 : 1;
   var lastSpeed = 1;
   var labelsVisible = models.length > 0;
@@ -63,6 +65,7 @@
   var labelYawHold = 0;
   var visible = true;
   var DPR = 1;
+  var sceneScale = 1;
   var elapsed = 0;
   var last = performance.now();
   var pointer = { x: 0, y: 0, tx: 0, ty: 0 };
@@ -157,6 +160,24 @@ mat2 rotate2d(float a) {
   return mat2(c, -s, s, c);
 }
 
+/* Approximate blackbody color (Tanner Helland), clamped to display range. */
+vec3 blackbody(float kelvin) {
+  float t = clamp(kelvin, 1000.0, 40000.0) / 100.0;
+  float r;
+  float g;
+  float b;
+  if (t <= 66.0) {
+    r = 255.0;
+    g = 99.4708025861 * log(max(t, 10.0)) - 161.1195681661;
+    b = 138.5177312231 * log(max(t - 10.0, 1.0)) - 305.0447927307;
+  } else {
+    r = 329.698727446 * pow(t - 60.0, -0.1332047592);
+    g = 288.1221695283 * pow(t - 60.0, -0.0755148492);
+    b = 255.0;
+  }
+  return clamp(vec3(r, g, b) / 255.0, 0.0, 1.0);
+}
+
 /* ===== Optical Point Spread Function (PSF) Star Generator ===== */
 
 /* Generates crisp, razor-sharp pinpoint stars with optical Airy halos */
@@ -179,11 +200,11 @@ vec3 starFieldLayer(vec2 uv, float cells, float threshold, float seed, float twi
   float mag = pow(hash21(id + seed + 47.0), 2.8) * 3.0 + 0.4;
   float tw = 0.70 + 0.30 * sin(twinkle + h * 137.0);
 
-  /* Multi-spectral stellar colors: O/B (cyan/blue), A (white), G (gold), M (red/orange) */
+  /* Blackbody stellar colors: O/B, A, G, K/M populations. */
   vec3 rnd = hash23(id + seed + 91.0);
-  vec3 col = mix(vec3(0.68, 0.88, 1.0), vec3(1.0, 0.98, 0.92), rnd.x);
-  col = mix(col, vec3(1.0, 0.74, 0.40), step(0.86, rnd.y) * 0.75);
-  col = mix(col, vec3(0.38, 0.82, 1.0), step(0.80, rnd.z) * 0.6);
+  vec3 col = blackbody(mix(3200.0, 18000.0, rnd.x));
+  col = mix(col, blackbody(2600.0), step(0.86, rnd.y) * 0.45);
+  col = mix(col, blackbody(22000.0), step(0.80, rnd.z) * 0.40);
 
   return col * star * mag * tw;
 }
@@ -335,19 +356,27 @@ void main() {
   col += vec3(0.90, 0.84, 1.0) * m2 * 1.4;
 
   /* ------------------------------------------------------------------
-     6. Galaxy Coordinate Mapping (3D Inclination, Yaw, Differential Shear)
+     6. Galaxy Coordinate Mapping (pseudo-3D inclined disk)
      ------------------------------------------------------------------ */
   vec2 p = (uv - u_center) * vec2(aspect, 1.0) * (u_scale / u_zoom);
   p += ptr * 0.032;
   p = rotate2d(u_yaw - 0.38) * p;
+
+  /* keep projected ellipse so orbit labels stay aligned */
   p.y /= u_tilt;
 
-  float r = length(p);
+  float rPlane = length(p);
   float theta = atan(p.y, p.x);
+
+  /* disk thickness / height warp (2 noise samples) */
+  float hA = fbm3(p * 3.2 + vec2(t * 0.006, 1.7));
+  float hB = fbm3(p * 7.1 + vec2(-t * 0.004, 4.2));
+  float diskHeight = ((hA - 0.5) * 0.18 + (hB - 0.5) * 0.09) * exp(-rPlane * 1.6);
+  float r = sqrt(rPlane * rPlane + diskHeight * diskHeight);
 
   /* Differential rotation */
   float spin = t * 0.038;
-  float shear = spin * (0.28 + 0.85 / (r + 0.42));
+  float shear = spin * (0.28 + 0.85 / (rPlane + 0.42));
   float thetaR = theta - shear;
   vec2 gp = vec2(cos(thetaR), sin(thetaR)) * r;
 
@@ -374,8 +403,17 @@ void main() {
   float spurs = pow(0.5 + 0.5 * sin(spiralTheta * 4.0 - 6.0 * log(r + 0.1) + n2 * 2.0), 4.0) * 0.25;
   float totalArms = primaryArms + subArms + spurs;
 
+  /* ------------------------------------------------------------------
+     7b. Ellipsoidal / barred bulge (fixed pattern speed)
+     ------------------------------------------------------------------ */
+  float barAngle = 0.22 + spin * 0.5;
+  vec2 barP = rotate2d(-barAngle) * p;
+  float ellR = length(vec2(barP.x / 1.35, barP.y / 0.62));
+  float sersicBulge = exp(-2.1 * pow(max(ellR / 0.18, 0.0), 1.0 / 1.5));
+  float peanut = exp(-pow(abs(barP.y) / 0.07, 2.0)) * exp(-barP.x * barP.x / 0.05) * 0.45;
+  float bulge = sersicBulge + peanut * 0.35;
+
   float disk = exp(-r * 2.2);
-  float bulge = exp(-r * 5.6);
   float coreGlow = exp(-r * r * 46.0);
   float nucleus = exp(-r * r * 190.0);
   float halo = exp(-r * 1.35);
@@ -385,12 +423,15 @@ void main() {
      ------------------------------------------------------------------ */
   float dustAngle = armPhase + 2.3 + (n2 - 0.5) * 1.8;
   float dustLane = pow(0.5 + 0.5 * sin(dustAngle), 5.0);
+  float dustAngle2 = dustAngle + 0.62 + (n3 - 0.5) * 0.9;
+  float dustLane2 = pow(0.5 + 0.5 * sin(dustAngle2), 8.0);
   float dustDist = smoothstep(0.04, 0.22, r) * exp(-r * 1.15);
   float dustNoise = smoothstep(0.20, 0.75, n2 * 0.55 + n3 * 0.45);
-  float dust = dustLane * dustDist * dustNoise * 1.1;
-
+  float dustFilament = smoothstep(0.52, 0.86, n3 * 0.6 + n4 * 0.4);
+  float dust = (dustLane * 0.78 + dustLane2 * 0.42) * dustDist * (0.55 + dustFilament * 0.45) * 1.05;
   float fineDust = smoothstep(0.48, 0.78, n4) * exp(-r * 1.6) * smoothstep(0.06, 0.28, r);
   dust += fineDust * 0.35;
+  dust = clamp(dust, 0.0, 1.0);
 
   /* ------------------------------------------------------------------
      9. Color Grading: Matched to Reference Spiral Galaxy Image
@@ -426,7 +467,7 @@ void main() {
 
   /* Translucent, luminous gas veil (AIRY, NOT OPAQUE CLOUDS) */
   float gasVeil = disk * (0.008 + totalArms * 0.95) * (0.35 + 0.65 * n1);
-  gasVeil *= 1.0 - dust * 0.85;
+  gasVeil *= 1.0 - clamp(dust, 0.0, 1.0) * 0.85;
   galaxy += armColor * gasVeil * 0.80;
 
   /* Warm inner disk haze */
@@ -453,7 +494,7 @@ void main() {
   float star1 = (exp(-d1 * d1 * 2600.0) * 3.6 + exp(-d1 * 26.0) * 0.4);
   float p1Active = step(0.62, h1) * disk * (0.15 + primaryArms * 3.2);
   p1Active *= 1.0 - dust * 0.70;
-  vec3 col1 = mix(vec3(0.72, 0.88, 1.0), vec3(1.0, 0.95, 0.82), h1);
+  vec3 col1 = mix(blackbody(11000.0), blackbody(6500.0), h1);
   galaxy += col1 * star1 * p1Active * (0.7 + 1.3 * hash21(id1 + 55.0));
 
   /* Population 2: Medium OB Star Clusters & Supergiants (Brilliant sparkling jewels) */
@@ -466,8 +507,8 @@ void main() {
   float star2 = (exp(-d2 * d2 * 1500.0) * 4.8 + exp(-d2 * 18.0) * 0.7);
   float p2Active = step(0.75, h2) * disk * (0.10 + primaryArms * 3.8);
   p2Active *= 1.0 - dust * 0.80;
-  vec3 col2 = mix(vec3(0.42, 0.82, 1.0), vec3(0.88, 0.96, 1.0), h2);
-  col2 = mix(col2, vec3(1.0, 0.78, 0.44), step(0.85, hash21(id2 + 77.0)) * 0.75);
+  vec3 col2 = mix(blackbody(22000.0), blackbody(9000.0), h2);
+  col2 = mix(col2, blackbody(3800.0), step(0.85, hash21(id2 + 77.0)) * 0.65);
   galaxy += col2 * star2 * p2Active * (0.9 + 1.5 * hash21(id2 + 88.0));
 
   /* Population 3: Major Starburst Clusters & Glowing Knots */
@@ -492,7 +533,7 @@ void main() {
   float d4 = length(f4 - o4 * 0.7);
   float star4 = (exp(-d4 * d4 * 2000.0) * 3.5 + exp(-d4 * 20.0) * 0.5);
   float p4Active = step(0.55, h4) * bulge * 1.6;
-  vec3 col4 = mix(vec3(1.0, 0.88, 0.65), vec3(1.0, 0.70, 0.38), h4);
+  vec3 col4 = mix(blackbody(5200.0), blackbody(3600.0), h4);
   galaxy += col4 * star4 * p4Active;
 
   /* ------------------------------------------------------------------
@@ -507,8 +548,9 @@ void main() {
   /* ------------------------------------------------------------------
      12. Dust Reddening and Extinction
      ------------------------------------------------------------------ */
-  galaxy = mix(galaxy, galaxy * vec3(0.60, 0.42, 0.30), dust * 0.75);
-  galaxy *= 1.0 - dust * 0.55;
+  float dustMask = clamp(dust, 0.0, 1.0);
+  galaxy = mix(galaxy, galaxy * vec3(0.52, 0.30, 0.18), dustMask * 0.82);
+  galaxy *= 1.0 - dustMask * 0.62;
 
   col += galaxy;
 
@@ -667,10 +709,11 @@ void main() {
       wrapRect.height * 1.08,
       wrapRect.width * 0.94
     );
-    gl.uniform1f(uniforms.scale, Math.max(
+    sceneScale = Math.max(
       1.7,
       Math.min(height / Math.max(110, targetDiameter * 0.5), 8.5)
-    ));
+    );
+    gl.uniform1f(uniforms.scale, sceneScale);
 
     var cx = (wrapRect.left + wrapRect.width * 0.5 - sceneRect.left) /
       Math.max(1, sceneRect.width);
@@ -787,22 +830,20 @@ void main() {
     var cx = width * 0.5;
     var cy = height * 0.5;
 
-    /* Parallax offset matching fragment shader: p += ptr * 0.032 */
-    cx += pointer.x * (width * 0.022) * view.zoom;
-    cy -= pointer.y * (height * 0.022) * view.zoom;
+    var yaw = hoveredNode ? labelYawHold : view.yaw;
+    var zoom = view.zoom;
+    var sceneW = Math.max(1, sceneRect.width || width);
+    var sceneH = Math.max(1, sceneRect.height || height);
+    var aspect = sceneW / sceneH;
+    var scaleOverZoom = Math.max(0.0001, sceneScale / zoom);
 
-    /* Base orbit radii scaled directly by view.zoom */
-    var baseRx = Math.min(width * 0.38, 260);
-    var baseRy = baseRx * 0.44;
-
-    var rx = baseRx * view.zoom;
-    var ry = baseRy * view.zoom;
-
-    /* Rotation angle matching shader rotate2d(u_yaw - 0.38) */
-    var rotAngle = -0.38 - (hoveredNode ? labelYawHold : view.yaw);
+    /* Inverse of the fragment shader:
+       p = rotate2d(u_yaw - 0.38) * ((uv - u_center) * vec2(aspect, 1.0) * (u_scale / u_zoom) + ptr * 0.032);
+       p.y /= u_tilt;
+       GLSL rotate2d(a) is mat2(c,-s,s,c), i.e. standard R(-a); invert with R(a). */
+    var rotAngle = yaw - 0.38;
     var cosRot = Math.cos(rotAngle);
     var sinRot = Math.sin(rotAngle);
-    var tiltScale = view.tilt / 0.62;
     var labelTime = hoveredNode ? labelHold : elapsed;
 
     /* Text label scale zooms in/out together with the cosmic space */
@@ -812,11 +853,19 @@ void main() {
       var angle = node.angle + labelTime * node.speed;
       var radius = node.radius + Math.sin(labelTime * 0.22 + node.phase) * 0.028;
 
-      var ex = Math.cos(angle) * rx * radius;
-      var ey = Math.sin(angle) * ry * radius * tiltScale;
+      var planeX = Math.cos(angle) * radius;
+      var planeY = Math.sin(angle) * radius;
+      var tiltedX = planeX;
+      var tiltedY = planeY * view.tilt;
 
-      var x = cx + ex * cosRot - ey * sinRot;
-      var y = cy + ex * sinRot + ey * cosRot;
+      /* Undo the shader rotation, then the pointer offset. */
+      var p0x = tiltedX * cosRot - tiltedY * sinRot;
+      var p0y = tiltedX * sinRot + tiltedY * cosRot;
+      p0x -= pointer.x * 0.032;
+      p0y -= pointer.y * 0.032;
+
+      var x = cx + (p0x / scaleOverZoom / aspect) * sceneW;
+      var y = cy - (p0y / scaleOverZoom) * sceneH;
 
       /* 3D depth sorting relative to camera view */
       var zDepth = Math.sin(angle + (view.yaw - 0.38));
@@ -833,7 +882,7 @@ void main() {
       node.el.classList.toggle('is-front', front);
       node.el.classList.toggle('is-behind', !front);
       node.el.style.zIndex = front ? '6' : '2';
-      node.el.style.opacity = front ? '1' : Math.max(0.35, 0.85 + zDepth * 0.5).toFixed(2);
+      node.el.style.opacity = front ? '1' : Math.max(0.55, 0.85 + zDepth * 0.5).toFixed(2);
     });
 
     if (hoveredNode) positionTip();
@@ -846,7 +895,7 @@ void main() {
       motionBtn.innerHTML = moving
         ? '<i class="fas fa-pause me-1"></i> Pause motion'
         : '<i class="fas fa-play me-1"></i> Play motion';
-      motionBtn.setAttribute('aria-pressed', moving ? 'false' : 'true');
+      motionBtn.setAttribute('aria-label', moving ? 'Pause galaxy motion' : 'Play galaxy motion');
     }
     if (speedInput) speedInput.value = speed.toFixed(1);
     if (liveState) {
@@ -1185,6 +1234,26 @@ void main() {
           kick(1);
         }
       });
+    }
+
+    if (motionQuery) {
+      var onMotionPreferenceChange = function (event) {
+        reduceMotion = event.matches;
+        if (reduceMotion) {
+          if (speed > 0) lastSpeed = speed;
+          speed = 0;
+        } else {
+          speed = lastSpeed || 1;
+        }
+        last = performance.now();
+        paintMotion();
+        if (speed > 0) start(); else kick(1);
+      };
+      if (motionQuery.addEventListener) {
+        motionQuery.addEventListener('change', onMotionPreferenceChange);
+      } else if (motionQuery.addListener) {
+        motionQuery.addListener(onMotionPreferenceChange);
+      }
     }
 
     if (!initGL()) {
