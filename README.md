@@ -10,7 +10,7 @@
 
 ## Video
 
-[Play the video](https://laurmj4-eng.github.io/BSIT3A-DJANGO-Hermes-AI-Agent/evidence/hermes-ai-agent-demo-2026-10-30.mp4)
+[https://laurmj4-eng.github.io/BSIT3A-DJANGO-Hermes-AI-Agent/evidence/hermes-ai-agent-demo-2026-10-30.mp4](https://laurmj4-eng.github.io/BSIT3A-DJANGO-Hermes-AI-Agent/evidence/hermes-ai-agent-demo-2026-10-30.mp4)
 
 ---
 
