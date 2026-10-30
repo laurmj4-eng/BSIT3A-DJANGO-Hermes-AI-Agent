@@ -176,46 +176,6 @@ The system ships with:
 
 ---
 
-## Project Structure
-
-```
-BSIT3A-DJANGO-Hermes-AI-Agent/
-├── manage.py
-├── requirements.txt
-├── mysite/                 # project configuration
-│   ├── settings.py
-│   ├── urls.py
-│   ├── error_views.py
-│   └── wsgi.py
-├── apps/
-│   ├── core/               # public dashboard
-│   ├── users/              # legacy CRUD app (installed, not routed)
-│   ├── info/               # legacy CRUD app (installed, not routed)
-│   └── news/               # AI news aggregator
-│       ├── feeds.py        # RSS/Atom fetching & normalisation
-│       ├── classification.py
-│       ├── services.py     # refresh locking and run tracking
-│       ├── health.py       # source health views
-│       ├── exporters.py    # CSV/XLSX
-│       ├── models.py       # Article, Topic, RefreshRun
-│       ├── views.py        # feed, refresh, bookmark, API views
-│       └── migrations/
-├── templates/
-│   ├── news/               # feed, source health, offline
-│   ├── theme/              # base layout, topbar, footer, settings
-│   ├── errors/             # custom 404/500
-│   └── home.html           # dashboard
-├── static/
-│   ├── css/                # Tabler + custom design system
-│   ├── js/                 # feed, dashboard, PWA, theme scripts
-│   ├── icons/              # app icons
-│   ├── manifest.webmanifest
-│   └── sw.js
-└── sql/                    # optional database dump and import guide
-```
-
----
-
 ## Getting Started
 
 ### Requirements
