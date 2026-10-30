@@ -344,6 +344,29 @@ python manage.py test
 
 ---
 
+## Project Demo (Video Evidence)
+
+Screen recording of the Hermes AI Agent running locally, captured on **30 October 2026**
+(Brave browser, Django development server at `http://127.0.0.1:8000/`).
+
+[▶ Play the demo recording — hermes-ai-agent-demo-2026-10-30.mp4](docs/evidence/hermes-ai-agent-demo-2026-10-30.mp4)
+
+| Item | Value |
+| --- | --- |
+| Repository copy | `docs/evidence/hermes-ai-agent-demo-2026-10-30.mp4` |
+| Original capture | `C:\Users\emili\Videos\Captures\Hermes AI News Agent - Brave 2026-10-30 20-48-07.mp4` |
+| Recorded | 2026-10-30, 20:48 local time |
+| Size | 35.9 MB (37,623,153 bytes) |
+| SHA-256 | `070ec9eaa84f16fa15714db0b9fb3798c75228de5353943babc7b08c959fcc66` |
+| Capture method | Windows Xbox Game Bar (`Win + Alt + R`), saved to `Videos\Captures` |
+| Recorded with | `.venv\Scripts\python.exe manage.py runserver` |
+
+The file is stored unchanged from the original capture; verify it after cloning with
+`certutil -hashfile docs\evidence\hermes-ai-agent-demo-2026-10-30.mp4 SHA256`
+or `sha256sum` on Linux/macOS.
+
+---
+
 ## License
 
 Developed for academic purposes as part of the BSIT 3A curriculum.
