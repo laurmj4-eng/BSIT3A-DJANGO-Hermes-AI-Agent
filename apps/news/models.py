@@ -1,5 +1,7 @@
 """Stores AI news articles pulled from public RSS/Atom feeds."""
 
+import uuid
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -109,3 +111,21 @@ class PlatformModel(models.Model):
 
     def __str__(self):
         return f'{self.key}: {self.label}'
+
+class ReaderProfile(models.Model):
+    """Anonymous reader profile keyed by a signed cookie token. No PII."""
+
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False, db_index=True)
+    bookmarks = models.JSONField(default=list, blank=True)
+    read_ids = models.JSONField(default=list, blank=True)
+    history = models.JSONField(default=list, blank=True)  # entries {"id": int, "at": ISO8601}
+    saved_searches = models.JSONField(default=list, blank=True)  # entries {"name": str, "query": str}
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'tblnewsreaderprofile'
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f'ReaderProfile {self.token}'

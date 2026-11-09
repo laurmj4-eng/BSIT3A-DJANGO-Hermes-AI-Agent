@@ -1,8 +1,10 @@
-const CACHE = 'hermes-static-v11';
+const CACHE = 'hermes-static-v13';
+const RUNTIME_CACHE = 'hermes-runtime-v1';
 
 const CORE_URLS = [
   '/',
   '/news/',
+  '/offline.html',
   '/static/css/tabler.css',
   '/static/css/tabler-themes.css',
   '/static/css/app-theme.css',
@@ -76,74 +78,71 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Same-origin static assets: stale-while-revalidate
+  // Same-origin static assets: cache-first with background refresh.
+  // One respondWith per event: nested respondWith() makes the fetch fail,
+  // which is how an unstyled page happens once the SW controls the origin.
   if (url.origin === self.location.origin && url.pathname.startsWith('/static/')) {
     event.respondWith(
       caches.match(event.request).then((cached) => {
-        const cachedResponse = cached || null;
-        event.respondWith(
-          fetch(event.request).then((networkResponse) => {
-            // Store the network response in cache for next time
-            const copy = networkResponse.clone();
-            caches.open(CACHE).then((cache) => {
-              try {
-                cache.put(event.request, copy);
-              } catch (e) {
-                // Ignore quota errors
-              }
-            });
-            return networkResponse;
-          }).catch(() => {
-            // Fall back to cache if network fails
-            if (cachedResponse) return cachedResponse;
-            // For HTML navigations, return offline fallback
-            if (event.request.headers.get('Accept').includes('text/html')) {
-              return caches.match('/offline.html');
+        const network = fetch(event.request)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.ok) {
+              const copy = networkResponse.clone();
+              caches.open(CACHE).then((cache) => {
+                cache.put(event.request, copy).catch(() => {
+                  // Ignore quota errors
+                });
+              });
             }
-            return null;
+            return networkResponse;
           })
-        );
+          .catch(() => cached || new Response(null, { status: 504 }));
+        return cached || network;
       })
     );
     return;
   }
 
-  // Navigations: network-first, then cache fallback, then inline offline HTML
+  // Navigations & GET HTML: network-first, store in runtime cache, fallback chain
   if (event.request.mode === 'navigate' || (event.request.method === 'GET' &&
       url.pathname.endsWith('.html'))) {
     event.respondWith(
       fetch(event.request).then((networkResponse) => {
-        const copy = networkResponse.clone();
-        caches.open(CACHE).then((cache) => {
-          try {
-            cache.put(event.request, copy);
-          } catch (e) {
-            // Ignore quota errors
-          }
-        });
+        if (networkResponse && networkResponse.ok) {
+          const copy = networkResponse.clone();
+          caches.open(RUNTIME_CACHE).then((cache) => {
+            cache.put(event.request, copy).catch(() => {
+              // Ignore quota errors
+            });
+          });
+        }
         return networkResponse;
       }).catch(() => {
-        // Cache fallback
-        const cached = caches.match(event.request);
-        if (cached) return cached;
-        // Inline offline HTML
-        return new Response(
-          '<!DOCTYPE html><html><head><title>Hermes AI News - Offline</title>' +
-          '<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>' +
-          '<link rel="stylesheet" href="/static/css/tabler.css"/>' +
-          '<style>' +
-          'body{font-family:sans-serif;max-width:600px;margin:2rem;padding:1rem;}' +
-          '.retry{padding:1rem;background:#f8f9fa;border-radius:4px;margin-top:1rem;}' +
-          '</style>' +
-          '</head><body>' +
-          '<h1>Hermes AI News</h1>' +
-          '<p>You are offline. <button class="btn btn-accent retry" id="retryBtn">Retry</button></p>' +
-          '<script>' +
-          'document.getElementById("retryBtn").addEventListener("click", () => window.location.reload());' +
-          '</script>' +
-          '</body></html>',
-          { headers: { 'Content-Type': 'text/html' } }
-        );
+        // Cache fallback -> cached navigation -> offline page -> inline HTML
+        return caches.match(event.request).then((cached) => {
+          if (cached) return cached;
+          return caches.match('/offline.html').then((offline) => {
+            if (offline) return offline;
+            // Inline offline HTML
+            return new Response(
+              '<!DOCTYPE html><html><head><title>Hermes AI News - Offline</title>' +
+              '<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>' +
+              '<link rel="stylesheet" href="/static/css/tabler.css"/>' +
+              '<style>' +
+              'body{font-family:sans-serif;max-width:600px;margin:2rem;padding:1rem;}' +
+              '.retry{padding:1rem;background:#f8f9fa;border-radius:4px;margin-top:1rem;}' +
+              '</style>' +
+              '</head><body>' +
+              '<h1>Hermes AI News</h1>' +
+              '<p>You are offline. <button class="btn btn-accent retry" id="retryBtn">Retry</button></p>' +
+              '<script>' +
+              'document.getElementById("retryBtn").addEventListener("click", () => window.location.reload());' +
+              '</script>' +
+              '</body></html>',
+              { headers: { 'Content-Type': 'text/html' } }
+            );
+          });
+        });
       })
     );
     return;

@@ -203,3 +203,89 @@
     font-size: 1rem !important;
   }
 }
+
+/* ==========================================================================
+   PWA: install prompt card + update banner
+   ========================================================================== */
+.hermes-pwa-install {
+  position: fixed;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 1070;
+  width: min(22rem, calc(100vw - 2rem));
+  box-shadow: var(--tblr-shadow-lg, 0 1rem 3rem rgba(15, 23, 42, 0.18));
+  border-color: var(--tblr-border-color);
+  background-color: var(--tblr-bg-surface);
+  color: var(--tblr-body-color);
+}
+
+.hermes-pwa-install-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.hermes-pwa-install-text {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.hermes-pwa-install-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hermes-pwa-install-dismiss {
+  padding-inline: 0.5rem;
+  text-decoration: none;
+}
+
+.hermes-pwa-update {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  z-index: 1080;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  max-width: calc(100vw - 2rem);
+  padding: 0.625rem 1rem;
+  border: 1px solid var(--tblr-border-color);
+  border-radius: var(--tblr-border-radius);
+  background-color: var(--tblr-bg-surface);
+  color: var(--tblr-body-color);
+  font-size: 0.875rem;
+  box-shadow: var(--tblr-shadow, 0 0.5rem 1rem rgba(15, 23, 42, 0.15));
+}
+
+.hermes-pwa-update-text {
+  font-weight: 600;
+}
+
+.hermes-pwa-update-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+@media (max-width: 575.98px) {
+  .hermes-pwa-install {
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    width: auto;
+  }
+
+  .hermes-pwa-update {
+    left: 0.75rem;
+    right: 0.75rem;
+    transform: none;
+    max-width: none;
+    justify-content: center;
+  }
+}

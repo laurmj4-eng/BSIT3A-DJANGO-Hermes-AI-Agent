@@ -27,6 +27,56 @@
   outline-offset: 2px;
 }
 
+/* Keyboard focus ring on feed cards reached via j/k shortcuts */
+.news-feed .feed-article:focus,
+.news-feed .feed-article:focus-visible {
+  outline: 2px solid var(--dh-focus-ring, var(--tblr-primary));
+  outline-offset: 3px;
+  border-color: color-mix(in srgb, var(--tblr-primary) 42%, var(--tblr-border-color));
+  box-shadow: var(--tblr-shadow-lg);
+}
+
+/* Keyboard shortcuts help panel */
+.news-feed-help {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1080;
+  width: min(20rem, calc(100vw - 2rem));
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--tblr-border-color, #e2e8f0);
+  background: var(--tblr-bg-surface, #fff);
+  color: var(--tblr-body-color, #1e293b);
+  box-shadow: var(--tblr-shadow-lg, 0 12px 32px rgba(15, 23, 42, 0.18));
+}
+
+.news-feed-help[hidden] {
+  display: none;
+}
+
+.news-feed-help h2 {
+  font-size: 0.95rem;
+  margin: 0 0 0.5rem;
+}
+
+.news-feed-help dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.news-feed-help dt {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 600;
+}
+
+.news-feed-help dd {
+  margin: 0;
+}
+
 /* 44px touch targets for icon buttons */
 .news-feed .feed-action-btn,
 .news-feed .btn-icon {

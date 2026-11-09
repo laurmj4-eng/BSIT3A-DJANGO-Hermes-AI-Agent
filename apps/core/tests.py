@@ -272,3 +272,18 @@ class DashboardContextTests(TestCase):
         self.assertContains(response, 'dash-story-title')
         self.assertContains(response, 'dash-shelf-all')
         self.assertNotContains(response, 'dash-model-card')
+
+
+class OfflineServiceWorkerTests(TestCase):
+    """Offline fallback endpoints: service worker scope + offline page."""
+
+    def test_service_worker_served_with_scope(self):
+        response = self.client.get(reverse('service_worker'))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('application/javascript', response['Content-Type'])
+        self.assertEqual(response['Service-Worker-Allowed'], '/')
+
+    def test_offline_page_served(self):
+        response = self.client.get(reverse('offline_page'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Offline')

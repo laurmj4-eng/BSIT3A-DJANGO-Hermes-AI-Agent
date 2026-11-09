@@ -317,3 +317,209 @@
     document.addEventListener('tabler:theme-change', updateThemeColorMeta);
   }
 })();
+
+/* ---------------------------------------------------------------------------
+ * PWA: install prompt + service-worker update flow.
+ * Separate IIFE so the HermesUI/autocomplete code above is untouched.
+ * Every external API is guarded so unsupported browsers log nothing.
+ * ------------------------------------------------------------------------- */
+(function () {
+  'use strict';
+
+  var DISMISS_KEY = 'hermes_install_dismissed_v1';
+  var UPDATE_GUARD_KEY = 'hermes_update_toast_shown_v1';
+  var deferredPrompt = null;
+  var installCard = null;
+
+  function storageGet(store, key) {
+    try {
+      return store.getItem(key);
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function storageSet(store, key, value) {
+    try {
+      store.setItem(key, value);
+    } catch (err) {
+      /* storage disabled (private mode etc.) – ignore */
+    }
+  }
+
+  function isStandalone() {
+    try {
+      if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+        return true;
+      }
+    } catch (err) {
+      /* matchMedia unsupported – fall through */
+    }
+    try {
+      if (window.navigator && window.navigator.standalone === true) {
+        return true;
+      }
+    } catch (err) {
+      /* ignore */
+    }
+    return false;
+  }
+
+  function isDismissed() {
+    return storageGet(window.localStorage, DISMISS_KEY) !== null;
+  }
+
+  function hideInstallCard() {
+    if (installCard && installCard.parentNode) {
+      installCard.parentNode.removeChild(installCard);
+    }
+    installCard = null;
+  }
+
+  function showInstallCard() {
+    if (installCard || isStandalone() || isDismissed()) return;
+
+    var card = document.createElement('div');
+    card.className = 'card hermes-pwa-install';
+    card.setAttribute('role', 'status');
+    card.setAttribute('aria-live', 'polite');
+
+    var body = document.createElement('div');
+    body.className = 'card-body hermes-pwa-install-body';
+
+    var text = document.createElement('p');
+    text.className = 'hermes-pwa-install-text';
+    text.textContent = 'Install Hermes AI News';
+
+    var actions = document.createElement('div');
+    actions.className = 'hermes-pwa-install-actions';
+
+    var installBtn = document.createElement('button');
+    installBtn.type = 'button';
+    installBtn.className = 'btn btn-primary';
+    installBtn.textContent = 'Install';
+    installBtn.addEventListener('click', function () {
+      var promptEvent = deferredPrompt;
+      hideInstallCard();
+      if (!promptEvent || typeof promptEvent.prompt !== 'function') return;
+      try {
+        promptEvent.prompt();
+      } catch (err) {
+        return;
+      }
+      var choicePromise = null;
+      try {
+        choicePromise = promptEvent.userChoice;
+      } catch (err) {
+        choicePromise = null;
+      }
+      if (choicePromise && typeof choicePromise.then === 'function') {
+        choicePromise.then(function () {
+          deferredPrompt = null;
+        }, function () {
+          deferredPrompt = null;
+        });
+      }
+      deferredPrompt = null;
+    });
+
+    var dismissBtn = document.createElement('button');
+    dismissBtn.type = 'button';
+    dismissBtn.className = 'btn btn-link hermes-pwa-install-dismiss';
+    dismissBtn.textContent = 'Dismiss';
+    dismissBtn.addEventListener('click', function () {
+      storageSet(window.localStorage, DISMISS_KEY, new Date().toISOString());
+      hideInstallCard();
+    });
+
+    actions.appendChild(installBtn);
+    actions.appendChild(dismissBtn);
+    body.appendChild(text);
+    body.appendChild(actions);
+    card.appendChild(body);
+    document.body.appendChild(card);
+    installCard = card;
+  }
+
+  function initInstallPrompt() {
+    if (isStandalone() || isDismissed()) return;
+
+    window.addEventListener('beforeinstallprompt', function (event) {
+      // Chrome fires this only when the prompt is actually available.
+      if (event && typeof event.preventDefault === 'function') {
+        event.preventDefault();
+      }
+      deferredPrompt = event || null;
+      showInstallCard();
+    });
+
+    window.addEventListener('appinstalled', function () {
+      deferredPrompt = null;
+      hideInstallCard();
+    });
+  }
+
+  function showUpdateToast() {
+    if (document.querySelector('.hermes-pwa-update')) return;
+    if (storageGet(window.sessionStorage, UPDATE_GUARD_KEY) === '1') return;
+    storageSet(window.sessionStorage, UPDATE_GUARD_KEY, '1');
+
+    var banner = document.createElement('div');
+    banner.className = 'hermes-pwa-update';
+    banner.setAttribute('role', 'status');
+    banner.setAttribute('aria-live', 'polite');
+
+    var msg = document.createElement('span');
+    msg.className = 'hermes-pwa-update-text';
+    msg.textContent = 'A new version is available';
+
+    var actions = document.createElement('span');
+    actions.className = 'hermes-pwa-update-actions';
+
+    var reloadBtn = document.createElement('button');
+    reloadBtn.type = 'button';
+    reloadBtn.className = 'btn btn-primary btn-sm';
+    reloadBtn.textContent = 'Reload';
+    reloadBtn.addEventListener('click', function () {
+      window.location.reload();
+    });
+
+    var dismissBtn = document.createElement('button');
+    dismissBtn.type = 'button';
+    dismissBtn.className = 'btn btn-link btn-sm';
+    dismissBtn.textContent = 'Dismiss';
+    dismissBtn.addEventListener('click', function () {
+      if (banner.parentNode) {
+        banner.parentNode.removeChild(banner);
+      }
+    });
+
+    actions.appendChild(reloadBtn);
+    actions.appendChild(dismissBtn);
+    banner.appendChild(msg);
+    banner.appendChild(actions);
+    document.body.appendChild(banner);
+  }
+
+  function initUpdateFlow() {
+    if (!('serviceWorker' in navigator)) return;
+    try {
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        showUpdateToast();
+      });
+    } catch (err) {
+      /* serviceWorker present but unusable – ignore */
+    }
+  }
+
+  function boot() {
+    initInstallPrompt();
+    initUpdateFlow();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();

@@ -6,6 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
     <meta http-equiv="X-UA-Compatible" content="ie=edge"/>
     <title>{% block title %}Hermes AI News Agent{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}Hermes AI News Agent — an AI-curated feed of the latest artificial intelligence news, research and releases.{% endblock %}"/>
+    <meta name="robots" content="{% block robots_meta %}index,follow{% endblock %}"/>
+    <link rel="canonical" href="{% block canonical_url %}{{ request.build_absolute_uri }}{% endblock %}"/>
+    <meta property="og:site_name" content="Hermes AI News Agent"/>
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}"/>
+    <meta property="og:title" content="{% block og_title %}Hermes AI News Agent{% endblock %}"/>
+    <meta property="og:description" content="{% block og_description %}Hermes AI News Agent — an AI-curated feed of the latest artificial intelligence news, research and releases.{% endblock %}"/>
+    <meta property="og:url" content="{% block og_url %}{{ request.build_absolute_uri }}{% endblock %}"/>
+    {% block og_image %}{% endblock %}
+    <meta name="twitter:card" content="summary_large_image"/>
+    <link rel="alternate" type="application/rss+xml" title="Hermes AI News RSS" href="{{ request.scheme }}://{{ request.get_host }}{% url 'news:news_rss' %}"/>
     <link rel="icon" href="{% static 'icons/favicon-32.png' %}" type="image/png" sizes="32x32"/>
     <link rel="apple-touch-icon" href="{% static 'icons/icon-192.png' %}"/>
     <link rel="manifest" href="{% static 'manifest.webmanifest' %}"/>
@@ -49,7 +60,28 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
-          navigator.serviceWorker.register('{% static "sw.js" %}').catch(function () {});
+          var currentPath = '{% url "service_worker" %}';
+          navigator.serviceWorker.getRegistrations().then(function (registrations) {
+            var stale = false;
+            return Promise.all(registrations.map(function (registration) {
+              var worker = registration.active || registration.waiting || registration.installing;
+              if (!worker) return null;
+              var path = worker.scriptURL;
+              try { path = new URL(worker.scriptURL).pathname; } catch (e) {}
+              if (path !== currentPath) {
+                stale = true;
+                return registration.unregister();
+              }
+              return null;
+            })).then(function () {
+              // Drop the old /static/sw.js registration once, then reload with clean CSS.
+              if (stale && !sessionStorage.getItem('hermes_sw_cleanup_reloaded')) {
+                sessionStorage.setItem('hermes_sw_cleanup_reloaded', '1');
+                window.location.reload();
+              }
+            });
+          }).catch(function () {});
+          navigator.serviceWorker.register(currentPath, { updateViaCache: 'none' }).catch(function () {});
         });
       }
     </script>

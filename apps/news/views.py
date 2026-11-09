@@ -12,8 +12,9 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from django.conf import settings
+from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db.models import Count, F, Q
+from django.db.models import Case, Count, F, IntegerField, Q, Value, When
 from django.http import (
     Http404,
     HttpResponse,
@@ -23,7 +24,7 @@ from django.http import (
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.dateparse import parse_date
+from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.feedgenerator import Rss201rev2Feed
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -38,6 +39,19 @@ from .image_proxy import (
     write_cache,
 )
 from .models import Article, Topic
+from .profile import (
+    add_id as profile_add_id,
+    add_saved_search,
+    get_reader_profile,
+    history_entries,
+    ids as profile_ids,
+    merge_ids,
+    record_history,
+    remove_id as profile_remove_id,
+    remove_saved_search,
+    saved_searches,
+    set_profile_cookie,
+)
 from .services import RefreshLockError, latest_run, run_refresh
 
 PER_PAGE = 20
@@ -110,17 +124,60 @@ def read_article_ids(request) -> set[int]:
     return _session_ids(request, READ_SESSION_KEY)
 
 
-def _toggle_session_id(request, key, pk) -> bool:
-    """Toggle *pk* in a session ID list. Returns the new "on" state."""
-    values = _clean_ids(request.session.get(key, []))
-    if pk in values:
-        values = [value for value in values if value != pk]
+def _reader_state(request):
+    """Return (profile, saved_ids, read_ids), migrating legacy session IDs once."""
+    cached = getattr(request, "_reader_state", None)
+    if cached is not None:
+        return cached
+    profile = get_reader_profile(request)
+    if profile is not None:
+        legacy_saved = _session_ids(request, SAVED_SESSION_KEY)
+        legacy_read = _session_ids(request, READ_SESSION_KEY)
+        if legacy_saved:
+            merge_ids(profile, "bookmarks", legacy_saved)
+            request.session.pop(SAVED_SESSION_KEY, None)
+        if legacy_read:
+            merge_ids(profile, "read_ids", legacy_read)
+            request.session.pop(READ_SESSION_KEY, None)
+        state = (
+            profile,
+            set(profile_ids(profile, "bookmarks")),
+            set(profile_ids(profile, "read_ids")),
+        )
+    else:
+        state = (None, saved_article_ids(request), read_article_ids(request))
+    request._reader_state = state
+    return state
+
+
+def _reader_saved_ids(request) -> set[int]:
+    """Bookmarks for the signed reader profile, falling back to the session."""
+    return _reader_state(request)[1]
+
+
+def _reader_read_ids(request) -> set[int]:
+    """Read IDs for the signed reader profile, falling back to the session."""
+    return _reader_state(request)[2]
+
+
+def _sync_session_ids(request, key, values) -> None:
+    """Mirror profile IDs into the legacy session list for graceful fallback."""
+    request.session[key] = _clean_ids(sorted(values))
+
+
+def _toggle_profile_id(request, field, session_key, pk):
+    """Toggle *pk* on the reader profile, merging legacy session IDs first."""
+    profile = get_reader_profile(request, create=True)
+    merge_ids(profile, field, _session_ids(request, session_key))
+    current = profile_ids(profile, field)
+    if pk in current:
+        values = profile_remove_id(profile, field, pk)
         is_on = False
     else:
-        values.append(pk)
+        values = profile_add_id(profile, field, pk)
         is_on = True
-    request.session[key] = values[-MAX_SESSION_IDS:]
-    return is_on
+    _sync_session_ids(request, session_key, values)
+    return is_on, len(values)
 
 
 # ---------------------------------------------------------------------------
@@ -145,8 +202,9 @@ def _apply_filters(request, qs, include_session: bool = True):
     saved_filter = params.get("saved") == "1"
     unread_filter = params.get("unread") == "1"
 
+    terms = query.split()[:MAX_SEARCH_TERMS] if query else []
     if query:
-        for term in query.split()[:MAX_SEARCH_TERMS]:
+        for term in terms:
             qs = qs.filter(
                 Q(title__icontains=term)
                 | Q(summary__icontains=term)
@@ -170,18 +228,51 @@ def _apply_filters(request, qs, include_session: bool = True):
     if date_to:
         qs = qs.filter(published_at__date__lte=date_to)
 
+    if query:
+        relevance = Value(0, output_field=IntegerField())
+        relevance = relevance + Case(
+            When(title__iexact=query, then=Value(10)),
+            default=Value(0),
+            output_field=IntegerField(),
+        )
+        for term in terms:
+            relevance = relevance + Case(
+                When(title__istartswith=term, then=Value(5)),
+                default=Value(0),
+                output_field=IntegerField(),
+            )
+            relevance = relevance + Case(
+                When(title__icontains=term, then=Value(4)),
+                default=Value(0),
+                output_field=IntegerField(),
+            )
+            relevance = relevance + Case(
+                When(summary__icontains=term, then=Value(2)),
+                default=Value(0),
+                output_field=IntegerField(),
+            )
+            relevance = relevance + Case(
+                When(source__icontains=term, then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField(),
+            )
+        qs = qs.annotate(relevance=relevance)
+
     if sort == "oldest":
         qs = qs.order_by(*OLDEST_ORDER)
     elif sort == "title":
         qs = qs.order_by("title", "-published_at")
     else:
         sort = "newest"
-        qs = qs.order_by(*NEWEST_ORDER)
+        if query:
+            qs = qs.order_by("-relevance", *NEWEST_ORDER)
+        else:
+            qs = qs.order_by(*NEWEST_ORDER)
 
     if include_session and saved_filter:
-        qs = qs.filter(pk__in=saved_article_ids(request))
+        qs = qs.filter(pk__in=_reader_saved_ids(request))
     if include_session and unread_filter:
-        qs = qs.exclude(pk__in=read_article_ids(request))
+        qs = qs.exclude(pk__in=_reader_read_ids(request))
 
     qs = qs.prefetch_related("topics")
 
@@ -214,6 +305,16 @@ def _apply_filters(request, qs, include_session: bool = True):
         "active_filter_count": active_filter_count,
     }
     return qs, ctx
+
+
+def _apply_profile_filters(request, qs):
+    """Apply saved/unread filters based on the reader profile (or empty)."""
+    profile = get_reader_profile(request)
+    if request.GET.get("saved") == "1":
+        qs = qs.filter(pk__in=profile_ids(profile, "bookmarks")) if profile else qs.none()
+    if request.GET.get("unread") == "1":
+        qs = qs.exclude(pk__in=profile_ids(profile, "read_ids")) if profile else qs
+    return qs
 
 
 def _elided_page_range(page) -> list[int | None]:
@@ -280,8 +381,8 @@ def news_page(request):
     paginator = Paginator(articles, PER_PAGE)
     page = paginator.get_page(request.GET.get("page", 1))
 
-    saved_ids = saved_article_ids(request)
-    read_ids = read_article_ids(request)
+    saved_ids = _reader_saved_ids(request)
+    read_ids = _reader_read_ids(request)
     for article in page.object_list:
         article.is_saved = article.pk in saved_ids
         article.is_read = article.pk in read_ids
@@ -327,6 +428,7 @@ def news_page(request):
         "feed_count": len(FEEDS),
         "saved_total": len(saved_ids),
         "read_total": len(read_ids),
+        "saved_searches": saved_searches(get_reader_profile(request)),
         "filter_query": filter_query,
         "saved_toggle_query": saved_params.urlencode(),
         "unread_toggle_query": unread_params.urlencode(),
@@ -390,26 +492,63 @@ def news_refresh(request):
 
 @require_POST
 def news_toggle_save(request, pk):
-    """Bookmark / un-bookmark an article for this browser session."""
+    """Bookmark / un-bookmark an article for this anonymous reader profile."""
     article = get_object_or_404(Article, pk=pk)
-    is_saved = _toggle_session_id(request, SAVED_SESSION_KEY, article.pk)
-    return JsonResponse({
+    is_saved, total = _toggle_profile_id(
+        request, "bookmarks", SAVED_SESSION_KEY, article.pk
+    )
+    response = JsonResponse({
         "status": "ok",
         "is_saved": is_saved,
-        "saved_total": len(saved_article_ids(request)),
+        "saved_total": total,
     })
+    return set_profile_cookie(response, request)
 
 
 @require_POST
 def news_toggle_read(request, pk):
-    """Toggle the read state of an article for this browser session."""
+    """Toggle the read state of an article for this anonymous reader profile."""
     article = get_object_or_404(Article, pk=pk)
-    is_read = _toggle_session_id(request, READ_SESSION_KEY, article.pk)
-    return JsonResponse({
+    is_read, total = _toggle_profile_id(
+        request, "read_ids", READ_SESSION_KEY, article.pk
+    )
+    response = JsonResponse({
         "status": "ok",
         "is_read": is_read,
-        "read_total": len(read_article_ids(request)),
+        "read_total": total,
     })
+    return set_profile_cookie(response, request)
+
+
+@require_POST
+def search_save(request):
+    """Save the current filter query under a name for this reader profile."""
+    name = request.POST.get("name", "")
+    query = request.POST.get("query", "")
+    profile = get_reader_profile(request, create=True)
+    _saved, error = add_saved_search(profile, name, query)
+    if error:
+        messages.error(request, error)
+    else:
+        messages.success(request, "Search saved.")
+    response = redirect(reverse("news:news_list") + "?" + query)
+    return set_profile_cookie(response, request)
+
+
+@require_POST
+def search_delete(request, index):
+    """Remove a saved search by 0-based index for this reader profile."""
+    profile = get_reader_profile(request)
+    remove_saved_search(profile, index)
+    next_url = request.POST.get("next") or reverse("news:news_list")
+    if not url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        next_url = reverse("news:news_list")
+    response = redirect(next_url)
+    return set_profile_cookie(response, request)
 
 
 @require_GET
@@ -428,12 +567,14 @@ def news_open(request, pk):
         last_viewed_at=timezone.now(),
     )
 
-    read_ids = read_article_ids(request)
-    if article.pk not in read_ids:
-        read_ids.add(article.pk)
-        request.session[READ_SESSION_KEY] = _clean_ids(sorted(read_ids))
+    profile = get_reader_profile(request, create=True)
+    merge_ids(profile, "read_ids", read_article_ids(request))
+    profile_add_id(profile, "read_ids", article.pk)
+    record_history(profile, article.pk)
+    _sync_session_ids(request, READ_SESSION_KEY, profile_ids(profile, "read_ids"))
 
-    return redirect(article.url)
+    response = redirect(article.url)
+    return set_profile_cookie(response, request)
 
 
 @require_GET
@@ -483,6 +624,7 @@ def news_export(request, fmt):
     articles, _ = _apply_filters(
         request, Article.objects.all(), include_session=False
     )
+    articles = _apply_profile_filters(request, articles)
     rows = article_rows(articles[:MAX_EXPORT_ROWS])
 
     stamp = timezone.localdate().strftime("%Y%m%d")
@@ -511,6 +653,7 @@ def news_rss(request):
     articles, _ = _apply_filters(
         request, Article.objects.all(), include_session=False
     )
+    articles = _apply_profile_filters(request, articles)
     articles = articles.order_by(*NEWEST_ORDER)[:RSS_ITEM_LIMIT]
 
     link = request.build_absolute_uri(reverse("news:news_list"))
@@ -554,6 +697,7 @@ def news_api(request):
         Article.objects.all(),
         include_session=False,
     )
+    articles = _apply_profile_filters(request, articles)
     articles = articles.only(
         "id",
         "title",
@@ -633,3 +777,37 @@ def news_suggest(request):
     ]
 
     return JsonResponse({"results": results, "topics": topic_results})
+
+
+@require_GET
+def news_detail(request, pk):
+    """Render a single cached article with related coverage."""
+    article = get_object_or_404(Article.objects.prefetch_related("topics"), pk=pk)
+
+    related = list(
+        Article.objects.filter(topics__in=article.topics.all())
+        .exclude(pk=article.pk)
+        .distinct()
+        .order_by("-published_at", "-fetched_at")[:4]
+    )
+
+    return render(request, "news/article.html", {"article": article, "related": related})
+
+
+@require_GET
+def news_history(request):
+    profile = get_reader_profile(request)
+    entries = history_entries(profile)
+    ids = [e["id"] for e in entries]
+    articles = Article.objects.filter(pk__in=ids).in_bulk()
+    items = []
+    for entry in entries:
+        article = articles.get(entry["id"])
+        if article is None:
+            continue
+        items.append({
+            "article": article,
+            "at": entry["at"],
+            "at_display": parse_datetime(entry["at"]),
+        })
+    return render(request, "news/history.html", {"items": items, "history_count": len(items)})

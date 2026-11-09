@@ -1,9 +1,28 @@
 """Template helpers for the news feed."""
 
+import math
+import re
+
 from django import template
 from django.http import QueryDict
+from django.utils.html import strip_tags
 
 register = template.Library()
+
+_WORD_RE = re.compile(r"\w+", re.UNICODE)
+
+
+@register.filter(name="read_time")
+def read_time(value):
+    """Estimate reading time for a snippet of (possibly HTML) text.
+
+    Tags are stripped, words are counted, and the result is rounded up at a
+    200 words-per-minute pace with a floor of one minute.
+    """
+    text = strip_tags(str(value or ""))
+    words = len(_WORD_RE.findall(text))
+    minutes = max(1, math.ceil(words / 200))
+    return f"{minutes} min read"
 
 
 @register.simple_tag(takes_context=True)

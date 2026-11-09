@@ -3,7 +3,7 @@
 {% load news_extras %}
 {% block title %}AI News · Hermes{% endblock %}
 {% block extra_css %}
-<link href="{% static 'css/news-feed.css' %}?v=3" rel="stylesheet"/>
+<link href="{% static 'css/news-feed.css' %}?v=4" rel="stylesheet"/>
 {% endblock %}
 {% block content %}
 <div class="container-xl news-feed">
@@ -132,11 +132,37 @@
           </a>
         {% endif %}
         <span class="text-muted small ms-auto">
-          {{ active_filter_count }} filter{{ active_filter_count|pluralize }} active · {{ total }} result{{ total|pluralize }}
+          {{ active_filter_count }} filter{{ active_filter_count|pluralize }} active — {{ total }} result{{ total|pluralize }}
         </span>
       </div>
-    </div>
   </form>
+
+      {% if query or source or topic or date_from or date_to %}
+        <form method="post" action="{% url 'news:search_save' %}" class="d-flex flex-wrap gap-2 align-items-center mt-3">
+          {% csrf_token %}
+          <label class="form-label mb-0" for="saved-search-name">Save this search</label>
+          <input type="text" name="name" id="saved-search-name" class="form-control form-control-sm" style="width: 180px;" placeholder="Name this search" required maxlength="80">
+          <input type="hidden" name="query" value="{{ filter_query }}">
+          <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
+        </form>
+      {% endif %}
+
+      {% if saved_searches %}
+        <div class="d-flex flex-wrap gap-2 align-items-center mt-2">
+          <span class="text-muted small">Saved searches:</span>
+          {% for entry in saved_searches %}
+            <span class="dh-chip">
+              <a href="?{{ entry.query }}">{{ entry.name }}</a>
+              <form method="post" action="{% url 'news:search_delete' forloop.counter0 %}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'news:news_list' %}{% if filter_query %}?{{ filter_query }}{% endif %}">
+                <button type="submit" class="btn btn-sm btn-link p-0" aria-label="Delete saved search {{ entry.name }}"><i class="fas fa-xmark chip-x"></i></button>
+              </form>
+            </span>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
 
   <!-- RESULTS TOOLBAR -->
   <div class="d-flex flex-wrap align-items-center gap-2 mb-3 feed-toolbar">
@@ -162,7 +188,7 @@
   {% if articles.object_list %}
     <div id="articlesContainer" class="articles-container feed-view-list">
       {% for a in articles %}
-        <article class="card dh-article-card feed-article {% if a.is_read %}is-read{% endif %} {% if a.is_saved %}is-saved{% endif %}" data-article-id="{{ a.id }}" data-reveal>
+        <article class="card dh-article-card feed-article {% if a.is_read %}is-read{% endif %} {% if a.is_saved %}is-saved{% endif %}" data-article-id="{{ a.id }}" data-article-title="{{ a.title }}" data-article-url="{% url 'news:news_detail' a.pk %}" {% if a.is_saved %}data-saved="1"{% endif %} data-reveal>
           <div class="card-body">
             <div class="d-flex align-items-start gap-3 feed-article-body">
               <div class="flex-fill min-w-0">
@@ -182,10 +208,13 @@
                   {% if a.view_count %}
                     <span class="text-muted small"><i class="fas fa-eye me-1" aria-hidden="true"></i>{{ a.view_count }}</span>
                   {% endif %}
+                  <span class="text-muted small feed-read-time">
+                    <i class="fas fa-clock me-1" aria-hidden="true"></i>{{ a.summary|read_time }}
+                  </span>
                 </div>
 
                 <h2 class="feed-article-title">
-                  <a href="{% url 'news:news_open' a.pk %}" target="_blank" rel="noopener noreferrer">{{ a.title }}</a>
+                  <a href="{% url 'news:news_detail' a.pk %}">{{ a.title }}</a>
                 </h2>
 
                 {% if a.summary %}
@@ -222,9 +251,16 @@
                   <span class="visually-hidden" data-action-label>{% if a.is_read %}Mark as unread{% else %}Mark as read{% endif %}</span>
                   <i class="fas fa-check-circle" aria-hidden="true"></i>
                 </button>
+                <button type="button" class="btn btn-ghost-secondary btn-icon feed-action-btn feed-share-btn"
+                        data-share-url="{{ request.scheme }}://{{ request.get_host }}{% url 'news:news_detail' a.pk %}"
+                        data-share-title="{{ a.title }}"
+                        aria-label="Share article" title="Share article">
+                  <i class="fas fa-share-nodes" aria-hidden="true"></i>
+                  <span class="visually-hidden" data-share-fallback>Copy link</span>
+                </button>
                 <a class="btn btn-ghost-secondary btn-icon feed-action-btn"
-                   href="{% url 'news:news_open' a.pk %}" target="_blank" rel="noopener noreferrer"
-                   aria-label="Open article in a new tab" title="Open article">
+                   href="{% url 'news:news_detail' a.pk %}"
+                   aria-label="Open article" title="Open article">
                   <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
                 </a>
               </div>
@@ -336,5 +372,5 @@
 </div>
 {% endblock %}
 {% block extra_js %}
-<script src="{% static 'js/news-feed.js' %}?v=4" defer></script>
+<script src="{% static 'js/news-feed.js' %}?v=5" defer></script>
 {% endblock %}

@@ -6,7 +6,9 @@ No admin panel is mounted; /admin/ is not routed.
 
 from datetime import timedelta
 
+from django.contrib.staticfiles import finders
 from django.db.models import Count, F, Max, Q
+from django.http import HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
 
@@ -122,6 +124,24 @@ MODEL_PLATFORMS = [
         ],
     },
 ]
+
+
+def service_worker(request):
+    """Serve the service worker with an explicit scope."""
+    sw_path = finders.find('sw.js')
+    if sw_path is None:
+        return HttpResponse('Service worker not found.', content_type='application/javascript', status=404)
+    with open(sw_path, 'rb') as sw_file:
+        body = sw_file.read()
+    response = HttpResponse(body, content_type='application/javascript')
+    response['Service-Worker-Allowed'] = '/'
+    response['Cache-Control'] = 'no-cache'
+    return response
+
+
+def offline_page(request):
+    """Offline fallback page for the service worker."""
+    return render(request, 'errors/offline.html')
 
 
 def _pick_highlights(articles, keyword_query, limit=3, scan=40):
@@ -481,4 +501,36 @@ def home(request):
         'feeds_error': feeds_error,
         'topic_count': len(topic_stats),
         'refresh_status': run.status if run else 'idle',
+    })
+
+
+def landing(request):
+    """Public landing page: headline stats, top topics, newest stories.
+
+    The dashboard itself stays at ``home()``; this is the lighter entry
+    point rendered at ``/``.
+    """
+    article_count = Article.objects.count()
+    topic_count = Topic.objects.count()
+    source_count = len(FEEDS)
+    run = latest_run()
+
+    latest_articles = (
+        Article.objects
+        .prefetch_related('topics')
+        .order_by('-published_at', '-fetched_at')[:6]
+    )
+    top_topics = (
+        Topic.objects
+        .annotate(article_count=Count('articles'))
+        .order_by('-article_count', 'name')[:8]
+    )
+
+    return render(request, 'landing.html', {
+        'article_count': article_count,
+        'topic_count': topic_count,
+        'source_count': source_count,
+        'last_run': run,
+        'latest_articles': latest_articles,
+        'top_topics': top_topics,
     })

@@ -6,6 +6,7 @@ app_name = 'news'
 
 urlpatterns = [
     path('', views.news_page, name='news_list'),
+    path('a/<int:pk>/', views.news_detail, name='news_detail'),
     path('refresh/', views.news_refresh, name='news_refresh'),
     path('save/<int:pk>/', views.news_toggle_save, name='news_toggle_save'),
     path('read/<int:pk>/', views.news_toggle_read, name='news_toggle_read'),
@@ -15,5 +16,8 @@ urlpatterns = [
     path('rss/', views.news_rss, name='news_rss'),
     path('api/articles/', views.news_api, name='news_api'),
     path('api/suggest/', views.news_suggest, name='news_suggest'),
+    path('history/', views.news_history, name='news_history'),
+    path('searches/save/', views.search_save, name='search_save'),
+    path('searches/<int:index>/delete/', views.search_delete, name='search_delete'),
     path('sources/', include('apps.news.health_urls')),
 ]

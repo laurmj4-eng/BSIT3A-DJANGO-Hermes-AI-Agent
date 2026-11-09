@@ -45,6 +45,164 @@
     }
   }
 
+  // ---------- Share (Web Share API with clipboard fallback) ----------
+  async function copyShareLink(url, btn) {
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.top = '-1000px';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+      }
+      toast('Link copied to clipboard', 'success');
+      return true;
+    } catch (err) {
+      toast('Could not copy link', 'danger');
+      return false;
+    }
+  }
+
+  async function handleShare(btn) {
+    const url = btn.getAttribute('data-share-url');
+    if (!url) return;
+    const title = btn.getAttribute('data-share-title') || document.title;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: title, url: url });
+        toast('Shared', 'success');
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+        await copyShareLink(url, btn);
+      }
+      return;
+    }
+    await copyShareLink(url, btn);
+  }
+
+  // ---------- Keyboard shortcuts ----------
+  function isTypingTarget(el) {
+    if (!el) return false;
+    const tag = el.tagName ? el.tagName.toLowerCase() : '';
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+    if (el.isContentEditable) return true;
+    if (el.closest && el.closest('[contenteditable="true"]')) return true;
+    return false;
+  }
+
+  function feedCards() {
+    return Array.prototype.slice.call(document.querySelectorAll('.feed-article'));
+  }
+
+  function focusedCardIndex(cards) {
+    const active = document.activeElement;
+    if (!active || !active.closest) return -1;
+    const card = active.closest('.feed-article');
+    return card ? cards.indexOf(card) : -1;
+  }
+
+  function focusCard(cards, index) {
+    if (!cards.length) return;
+    const i = Math.max(0, Math.min(cards.length - 1, index));
+    const card = cards[i];
+    if (!card.hasAttribute('tabindex')) card.setAttribute('tabindex', '-1');
+    card.focus();
+    if (typeof card.scrollIntoView === 'function') {
+      card.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  let helpPanel = null;
+
+  function buildHelpPanel() {
+    const panel = document.createElement('div');
+    panel.className = 'news-feed-help';
+    panel.id = 'newsFeedHelp';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', 'Keyboard shortcuts');
+    panel.hidden = true;
+    panel.innerHTML =
+      '<h2>Keyboard shortcuts</h2>' +
+      '<dl>' +
+      '<dt>j / k</dt><dd>Next / previous article</dd>' +
+      '<dt>s</dt><dd>Save focused article</dd>' +
+      '<dt>r</dt><dd>Mark focused article read</dd>' +
+      '<dt>/</dt><dd>Focus search</dd>' +
+      '<dt>?</dt><dd>Toggle this help</dd>' +
+      '<dt>Esc</dt><dd>Close this help</dd>' +
+      '</dl>' +
+      '<button type="button" class="btn btn-sm btn-outline-secondary mt-2" data-help-close>Close</button>';
+    panel.addEventListener('click', function (e) {
+      if (e.target.closest('[data-help-close]')) {
+        panel.hidden = true;
+      }
+    });
+    document.body.appendChild(panel);
+    return panel;
+  }
+
+  function toggleHelp() {
+    if (!helpPanel) helpPanel = buildHelpPanel();
+    helpPanel.hidden = !helpPanel.hidden;
+  }
+
+  function onShortcutKey(e) {
+    if (e.defaultPrevented) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (isTypingTarget(e.target)) return;
+
+    const key = e.key;
+    const cards = feedCards();
+    const idx = focusedCardIndex(cards);
+
+    if (key === 'j' || key === 'J') {
+      e.preventDefault();
+      focusCard(cards, idx < 0 ? 0 : idx + 1);
+      return;
+    }
+    if (key === 'k' || key === 'K') {
+      e.preventDefault();
+      focusCard(cards, idx < 0 ? cards.length - 1 : idx - 1);
+      return;
+    }
+    if (key === 's' || key === 'S') {
+      const card = idx >= 0 ? cards[idx] : null;
+      const saveBtn = card ? card.querySelector('[data-save-id]') : null;
+      if (saveBtn) { e.preventDefault(); handleSave(saveBtn); }
+      return;
+    }
+    if (key === 'r' || key === 'R') {
+      const card = idx >= 0 ? cards[idx] : null;
+      const readBtn = card ? card.querySelector('[data-read-id]') : null;
+      if (readBtn) { e.preventDefault(); handleRead(readBtn); }
+      return;
+    }
+    if (key === '/') {
+      const search = document.getElementById('q');
+      if (search) {
+        e.preventDefault();
+        search.focus();
+        if (typeof search.select === 'function') search.select();
+      }
+      return;
+    }
+    if (key === '?') {
+      e.preventDefault();
+      toggleHelp();
+      return;
+    }
+    if (key === 'Escape' && helpPanel && !helpPanel.hidden) {
+      helpPanel.hidden = true;
+    }
+  }
+
   // ---------- Refresh ----------
   function captureOriginal(btn) {
     if (!originalHtml.has(btn)) {
@@ -327,8 +485,79 @@
     try { localStorage.setItem('hermes-feed-view', v); } catch (e) {}
   }
 
+  // ---------- Offline saved reading list ----------
+  const SAVED_KEY = 'hermes_saved_articles_v1';
+  const SAVED_MAX = 200;
+
+  function readSavedArticles() {
+    try {
+      const raw = localStorage.getItem(SAVED_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(parsed)) return [];
+      const out = [];
+      const seen = Object.create(null);
+      for (let i = 0; i < parsed.length && out.length < SAVED_MAX; i++) {
+        const entry = parsed[i];
+        if (!entry || typeof entry.id === 'undefined') continue;
+        const id = String(entry.id);
+        if (seen[id]) continue;
+        seen[id] = true;
+        out.push({ id: id, title: entry.title || '', url: entry.url || '', ts: entry.ts || 0 });
+      }
+      return out;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function writeSavedArticles(entries) {
+    try {
+      localStorage.setItem(SAVED_KEY, JSON.stringify(entries.slice(0, SAVED_MAX)));
+    } catch (e) {}
+  }
+
+  function syncSavedArticles() {
+    const cards = document.querySelectorAll('[data-article-id]');
+    const savedOnPage = new Map();
+    const pageIds = new Set();
+    cards.forEach(function (card) {
+      const id = card.getAttribute('data-article-id');
+      if (!id) return;
+      const key = String(id);
+      pageIds.add(key);
+      if (card.getAttribute('data-saved') !== '1') return;
+      savedOnPage.set(key, {
+        id: key,
+        title: card.getAttribute('data-article-title') || '',
+        url: card.getAttribute('data-article-url') || '',
+      });
+    });
+    const existing = readSavedArticles();
+    const merged = [];
+    const seen = new Set();
+    savedOnPage.forEach(function (entry) {
+      const prev = existing.find(function (e) { return String(e.id) === entry.id; }) || {};
+      merged.push({
+        id: entry.id,
+        title: entry.title || prev.title || '',
+        url: entry.url || prev.url || '',
+        ts: prev.ts || Date.now(),
+      });
+      seen.add(entry.id);
+    });
+    existing.forEach(function (e) {
+      const id = String(e.id);
+      if (!pageIds.has(id) && !seen.has(id)) {
+        merged.push(e);
+        seen.add(id);
+      }
+    });
+    writeSavedArticles(merged);
+  }
+
   // ---------- Init ----------
   function init() {
+    syncSavedArticles();
     const refreshBtn = document.getElementById('refreshBtn');
     if (refreshBtn) refreshBtn.addEventListener('click', doRefresh);
     document.querySelectorAll('.refresh-trigger').forEach(function (b) {
@@ -346,11 +575,28 @@
 
     // Delegated clicks
     document.addEventListener('click', function (e) {
+      const shareBtn = e.target.closest('[data-share-url]');
+      if (shareBtn) { e.preventDefault(); e.stopPropagation(); handleShare(shareBtn); return; }
       const saveBtn = e.target.closest('[data-save-id]');
       if (saveBtn) { e.preventDefault(); handleSave(saveBtn); return; }
       const readBtn = e.target.closest('[data-read-id]');
       if (readBtn) { e.preventDefault(); handleRead(readBtn); return; }
     });
+
+    // Keyboard shortcuts (ignored while typing in a field)
+    document.addEventListener('keydown', onShortcutKey);
+
+    // Label the share control for browsers without the Web Share API.
+    if (!navigator.share) {
+      document.querySelectorAll('[data-share-label]').forEach(function (el) {
+        el.textContent = 'Copy link';
+      });
+      document.querySelectorAll('.feed-share-btn').forEach(function (btn) {
+        if (btn.querySelector('[data-share-label]')) return;
+        btn.setAttribute('aria-label', 'Copy link');
+        btn.setAttribute('title', 'Copy link');
+      });
+    }
 
     updateRelativeTimes();
     setInterval(updateRelativeTimes, 60000);

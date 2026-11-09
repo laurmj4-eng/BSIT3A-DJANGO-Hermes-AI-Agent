@@ -1,0 +1,187 @@
+{% extends "theme/base.html" %}
+{% load static %}
+
+{% block title %}Hermes AI News Agent — AI news in one dashboard{% endblock %}
+{% block meta_description %}AI news from 20+ public sources in one searchable, deduplicated dashboard.{% endblock %}
+{% block og_title %}Hermes AI News Agent — AI news in one dashboard{% endblock %}
+{% block og_description %}AI news from 20+ public sources in one searchable, deduplicated dashboard.{% endblock %}
+
+{% block extra_css %}
+<style>
+  .landing-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #1b1f3d 0%, #2b2358 55%, #3b2f7a 100%);
+    color: #fff;
+    padding: 4rem 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .landing-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(600px 240px at 80% 0%, rgba(255, 255, 255, .18), transparent 70%);
+    pointer-events: none;
+  }
+  .landing-hero .container { position: relative; z-index: 1; }
+  .landing-title { font-size: clamp(2rem, 4vw, 3.25rem); font-weight: 700; letter-spacing: -.02em; }
+  .landing-sub { font-size: clamp(1rem, 1.6vw, 1.25rem); opacity: .85; max-width: 42rem; }
+  .landing-stat { text-align: center; padding: 1rem .75rem; }
+  .landing-stat-value { font-size: 1.75rem; font-weight: 700; }
+  .landing-stat-label { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; opacity: .7; }
+  .topic-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    border-radius: 999px;
+    padding: .35rem .85rem;
+    background: rgba(255, 255, 255, .08);
+    border: 1px solid rgba(255, 255, 255, .14);
+    color: inherit;
+    text-decoration: none;
+    font-size: .9rem;
+    transition: background .15s ease, transform .15s ease;
+  }
+  .topic-chip:hover { background: rgba(255, 255, 255, .16); transform: translateY(-1px); color: inherit; }
+  .topic-chip .chip-count { font-weight: 600; opacity: .75; }
+  .article-card { height: 100%; transition: transform .15s ease, box-shadow .15s ease; }
+  .article-card:hover { transform: translateY(-2px); box-shadow: 0 .5rem 1.5rem rgba(0, 0, 0, .12); }
+  .article-card a.stretched-link::after { content: ""; position: absolute; inset: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-xl py-4">
+
+  {# ------------------------------------------------------------------ #}
+  {# HERO                                                                #}
+  {# ------------------------------------------------------------------ #}
+  <section class="landing-hero text-center">
+    <div class="container">
+      <div class="text-uppercase mb-2" style="letter-spacing: .18em; font-size: .8rem; opacity: .75;">
+        Hermes AI News Agent
+      </div>
+      <h1 class="landing-title mb-3">Hermes<span class="text-warning">AI</span></h1>
+      <p class="landing-sub mx-auto mb-4">
+        AI news from 20+ sources in one searchable dashboard.
+      </p>
+      <div class="d-flex flex-wrap gap-2 justify-content-center">
+        <a href="{% url 'news:news_list' %}" class="btn btn-primary btn-lg">
+          <i class="fas fa-rss me-1" aria-hidden="true"></i> Browse AI news
+        </a>
+        <a href="{% url 'dashboard' %}" class="btn btn-lg" style="background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.28);">
+          <i class="fas fa-gauge-high me-1" aria-hidden="true"></i> Open dashboard
+        </a>
+      </div>
+
+      {# ------------------------------------------------------------------ #}
+      {# STATS ROW                                                           #}
+      {# ------------------------------------------------------------------ #}
+      <div class="row g-2 mt-4 mx-auto" style="max-width: 46rem;">
+        <div class="col-6 col-md-3">
+          <div class="landing-stat">
+            <div class="landing-stat-value">{{ article_count }}</div>
+            <div class="landing-stat-label">Articles</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="landing-stat">
+            <div class="landing-stat-value">{{ source_count }}</div>
+            <div class="landing-stat-label">Sources</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="landing-stat">
+            <div class="landing-stat-value">{{ topic_count }}</div>
+            <div class="landing-stat-label">Topics</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="landing-stat">
+            {% if last_run %}
+              <div class="landing-stat-value" style="font-size: 1.15rem;">
+                {{ last_run.finished_at|default:last_run.started_at|timesince }} ago
+              </div>
+              <div class="landing-stat-label">Last refresh</div>
+            {% else %}
+              <div class="landing-stat-value">—</div>
+              <div class="landing-stat-label">Last refresh</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {# ------------------------------------------------------------------ #}
+  {# TOPIC CHIPS                                                         #}
+  {# ------------------------------------------------------------------ #}
+  <section class="mb-4">
+    <h2 class="h4 mb-3">Explore by topic</h2>
+    <div class="d-flex flex-wrap gap-2">
+      {% for t in top_topics %}
+        <a class="topic-chip" href="{% url 'news:news_list' %}?topic={{ t.slug }}">
+          <span class="rounded-circle" style="width: .55rem; height: .55rem; background: {{ t.color }};" aria-hidden="true"></span>
+          {{ t.name }}
+          <span class="chip-count">{{ t.article_count }}</span>
+        </a>
+      {% empty %}
+        <span class="text-muted">Topics appear after the first feed refresh.</span>
+      {% endfor %}
+    </div>
+  </section>
+
+  {# ------------------------------------------------------------------ #}
+  {# LATEST ARTICLES                                                     #}
+  {# ------------------------------------------------------------------ #}
+  <section class="mb-4">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h2 class="h4 mb-0">Latest stories</h2>
+      <a href="{% url 'news:news_list' %}" class="text-decoration-none">
+        View all <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i>
+      </a>
+    </div>
+    <div class="row g-3">
+      {% for a in latest_articles %}
+        <div class="col-12 col-md-6 col-xl-4">
+          <article class="card article-card position-relative">
+            <div class="card-body">
+              <div class="d-flex align-items-center gap-2 mb-2 small text-muted">
+                <span class="badge bg-primary-lt text-primary">{{ a.source }}</span>
+                <time datetime="{{ a.published_at|default:a.fetched_at|date:'c' }}" title="{{ a.published_at|default:a.fetched_at }}">
+                  {{ a.published_at|default:a.fetched_at|timesince }} ago
+                </time>
+              </div>
+              <h3 class="h5 mb-2">
+                <a class="text-reset text-decoration-none stretched-link" href="{% url 'news:news_detail' a.pk %}">
+                  {{ a.title }}
+                </a>
+              </h3>
+              {% if a.summary %}
+                <p class="text-muted small mb-2">{{ a.summary|truncatewords:24 }}</p>
+              {% endif %}
+              {% if a.topics.all %}
+                <div class="d-flex flex-wrap gap-1">
+                  {% for t in a.topics.all|slice:":3" %}
+                    <span class="badge bg-secondary-lt text-secondary">{{ t.name }}</span>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+          </article>
+        </div>
+      {% empty %}
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body text-center text-muted py-5">
+              No stories yet — run a feed refresh to populate the dashboard.
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+</div>
+{% endblock %}

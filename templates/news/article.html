@@ -1,0 +1,142 @@
+{% extends 'theme/base.html' %}
+{% load static %}
+{% load news_extras %}
+
+{% block title %}{{ article.title }} — Hermes AI News{% endblock %}
+{% block meta_description %}{{ article.summary|striptags|truncatechars:160 }}{% endblock %}
+{% block canonical_url %}{{ request.build_absolute_uri }}{% endblock %}
+{% block og_type %}article{% endblock %}
+{% block og_title %}{{ article.title }}{% endblock %}
+{% block og_description %}{{ article.summary|striptags|truncatechars:160 }}{% endblock %}
+{% block og_image %}{% if article.image_url %}
+    <meta property="og:image" content="{{ article.image_url }}"/>
+    <meta name="twitter:image" content="{{ article.image_url }}"/>
+  {% endif %}{% endblock %}
+
+{% block extra_head %}
+<link href="{% static 'css/news-feed.css' %}?v=4" rel="stylesheet"/>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "NewsArticle",
+  "headline": "{{ article.title|escapejs }}",
+  "description": "{{ article.summary|striptags|truncatechars:160|escapejs }}",
+  "datePublished": "{% if article.published_at %}{{ article.published_at|date:'c' }}{% else %}{{ article.fetched_at|date:'c' }}{% endif %}",
+  "url": "{{ request.build_absolute_uri|escapejs }}",{% if article.image_url %}
+  "image": ["{{ article.image_url|escapejs }}"],{% endif %}
+  "publisher": {
+    "@type": "Organization",
+    "name": "Hermes AI News"
+  }
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container-xl news-feed py-3">
+
+  <nav aria-label="Breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="{% url 'landing' %}">Home</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'news:news_list' %}">News</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{{ article.source }}</li>
+    </ol>
+  </nav>
+
+  <article class="card dh-article-card">
+    {% if article.image_url %}
+      <img class="card-img-top"
+           src="{% url 'news:image_proxy' %}?u={{ article.image_url|urlencode }}"
+           alt="" loading="lazy" decoding="async"/>
+    {% endif %}
+
+    <div class="card-body">
+      <h1 class="page-title mb-2">{{ article.title }}</h1>
+
+      <div class="feed-article-meta d-flex flex-wrap align-items-center gap-2 mb-3">
+        <span class="badge feed-badge feed-badge-source">{{ article.source }}</span>
+        {% if article.published_at %}
+          <time class="text-muted small" datetime="{{ article.published_at|date:'c' }}">
+            <i class="fas fa-calendar me-1" aria-hidden="true"></i>{{ article.published_at|date:"M j, Y" }}
+          </time>
+        {% else %}
+          <time class="text-muted small" datetime="{{ article.fetched_at|date:'c' }}">
+            <i class="fas fa-calendar me-1" aria-hidden="true"></i>Fetched {{ article.fetched_at|date:"M j, Y" }}
+          </time>
+        {% endif %}
+        {% if article.view_count %}
+          <span class="text-muted small"><i class="fas fa-eye me-1" aria-hidden="true"></i>{{ article.view_count }} view{{ article.view_count|pluralize }}</span>
+        {% endif %}
+        <span class="text-muted small feed-read-time">
+          <i class="fas fa-clock me-1" aria-hidden="true"></i>{{ article.summary|read_time }}
+        </span>
+      </div>
+
+      {% if article.topics.all %}
+        <div class="d-flex flex-wrap gap-1 mb-3">
+          {% for t in article.topics.all %}
+            <a class="dh-chip feed-topic-chip"
+               href="{% url 'news:news_list' %}?topic={{ t.slug }}"
+               style="border-color: {{ t.color }};">
+              <i class="fas fa-tag" aria-hidden="true" style="color: {{ t.color }};"></i> {{ t.name }}
+            </a>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      {% if article.summary %}
+        <div class="dh-article-summary text-muted">{{ article.summary|linebreaks }}</div>
+      {% endif %}
+
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        <a class="btn btn-primary" href="{% url 'news:news_open' article.pk %}"
+           target="_blank" rel="noopener noreferrer">
+          <i class="fas fa-arrow-up-right-from-square me-1" aria-hidden="true"></i> Read original
+        </a>
+        <a class="btn btn-outline-secondary" href="{% url 'news:news_list' %}">
+          <i class="fas fa-rotate-left me-1" aria-hidden="true"></i> Back to feed
+        </a>
+        <button type="button" class="btn btn-outline-secondary feed-share-btn"
+                data-share-url="{{ request.build_absolute_uri }}"
+                data-share-title="{{ article.title }}"
+                aria-label="Share this article">
+          <i class="fas fa-share-nodes me-1" aria-hidden="true"></i>
+          <span data-share-label>Share</span>
+          <span class="visually-hidden" data-share-fallback>Copy link</span>
+        </button>
+      </div>
+    </div>
+  </article>
+
+  {% if related %}
+    <section class="mt-4" aria-label="Related coverage">
+      <h2 class="h3 mb-3">Related coverage</h2>
+      <div class="row g-3">
+        {% for r in related %}
+          <div class="col-12 col-md-6">
+            <article class="card dh-article-card h-100">
+              <div class="card-body">
+                <h3 class="feed-article-title h5 mb-2">
+                  <a href="{% url 'news:news_detail' r.pk %}">{{ r.title }}</a>
+                </h3>
+                <div class="feed-article-meta d-flex flex-wrap align-items-center gap-2">
+                  <span class="badge feed-badge feed-badge-source">{{ r.source }}</span>
+                  {% if r.published_at %}
+                    <time class="text-muted small" datetime="{{ r.published_at|date:'c' }}">{{ r.published_at|date:"M j, Y" }}</time>
+                  {% else %}
+                    <time class="text-muted small" datetime="{{ r.fetched_at|date:'c' }}">{{ r.fetched_at|date:"M j, Y" }}</time>
+                  {% endif %}
+                </div>
+              </div>
+            </article>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'js/news-feed.js' %}?v=5" defer></script>
+{% endblock %}

@@ -410,20 +410,30 @@ class ExportTests(TestCase):
 
     def test_csv_export_applies_filters_but_ignores_session_filters(self):
         make_article(title="Claude wins")
-        make_article(title="Other story")
+        other = make_article(title="Other story")
 
         session = self.client.session
-        session["saved_articles"] = []
+        session["saved_articles"] = [other.pk]
         session.save()
 
         response = self.client.get(
             reverse("news:news_export", args=["csv"]),
-            {"q": "claude", "saved": "1"},
+            {"q": "claude"},
         )
 
         text = response.content.decode("utf-8-sig")
         self.assertIn("Claude wins", text)
         self.assertNotIn("Other story", text)
+
+        # Legacy session bookmarks are not authoritative for exports; without
+        # a reader profile the saved filter yields an empty export.
+        saved_response = self.client.get(
+            reverse("news:news_export", args=["csv"]),
+            {"saved": "1"},
+        )
+        saved_text = saved_response.content.decode("utf-8-sig")
+        self.assertNotIn("Claude wins", saved_text)
+        self.assertNotIn("Other story", saved_text)
 
     def test_xlsx_export(self):
         make_article(title="Workbook row")
@@ -583,8 +593,11 @@ class NewsPageCooldownAndControlsTests(TestCase):
 
         response = self.client.get(reverse("news:news_list"))
 
-        self.assertNotContains(response, "Export")
-        self.assertNotContains(response, reverse("news:news_rss"))
+        content = response.content.decode("utf-8")
+        self.assertNotIn("Export", content)
+        # RSS autodiscovery in <head> is fine; no visible RSS control in the body.
+        body = content.split("</head>", 1)[-1]
+        self.assertNotIn(reverse("news:news_rss"), body)
 
 
 class CsrfTests(TestCase):
