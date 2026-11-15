@@ -6,72 +6,28 @@
 {% block og_title %}Hermes AI News Agent — AI news in one dashboard{% endblock %}
 {% block og_description %}AI news from 20+ public sources in one searchable, deduplicated dashboard.{% endblock %}
 
-{% block extra_css %}
-<style>
-  .landing-hero {
-    position: relative;
-    overflow: hidden;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #1b1f3d 0%, #2b2358 55%, #3b2f7a 100%);
-    color: #fff;
-    padding: 4rem 1.5rem;
-    margin-bottom: 1.5rem;
-  }
-  .landing-hero::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(600px 240px at 80% 0%, rgba(255, 255, 255, .18), transparent 70%);
-    pointer-events: none;
-  }
-  .landing-hero .container { position: relative; z-index: 1; }
-  .landing-title { font-size: clamp(2rem, 4vw, 3.25rem); font-weight: 700; letter-spacing: -.02em; }
-  .landing-sub { font-size: clamp(1rem, 1.6vw, 1.25rem); opacity: .85; max-width: 42rem; }
-  .landing-stat { text-align: center; padding: 1rem .75rem; }
-  .landing-stat-value { font-size: 1.75rem; font-weight: 700; }
-  .landing-stat-label { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; opacity: .7; }
-  .topic-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: .4rem;
-    border-radius: 999px;
-    padding: .35rem .85rem;
-    background: rgba(255, 255, 255, .08);
-    border: 1px solid rgba(255, 255, 255, .14);
-    color: inherit;
-    text-decoration: none;
-    font-size: .9rem;
-    transition: background .15s ease, transform .15s ease;
-  }
-  .topic-chip:hover { background: rgba(255, 255, 255, .16); transform: translateY(-1px); color: inherit; }
-  .topic-chip .chip-count { font-weight: 600; opacity: .75; }
-  .article-card { height: 100%; transition: transform .15s ease, box-shadow .15s ease; }
-  .article-card:hover { transform: translateY(-2px); box-shadow: 0 .5rem 1.5rem rgba(0, 0, 0, .12); }
-  .article-card a.stretched-link::after { content: ""; position: absolute; inset: 0; }
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="container-xl py-4">
 
   {# ------------------------------------------------------------------ #}
   {# HERO                                                                #}
   {# ------------------------------------------------------------------ #}
-  <section class="landing-hero text-center">
+  <section class="landing-hero text-center" aria-labelledby="landing-title">
     <div class="container">
-      <div class="text-uppercase mb-2" style="letter-spacing: .18em; font-size: .8rem; opacity: .75;">
-        Hermes AI News Agent
-      </div>
-      <h1 class="landing-title mb-3">Hermes<span class="text-warning">AI</span></h1>
-      <p class="landing-sub mx-auto mb-4">
-        AI news from 20+ sources in one searchable dashboard.
+      <span class="hero-badge">
+        <span class="hero-badge-dot" aria-hidden="true"></span>
+        20+ sources · deduplicated · searchable
+      </span>
+      <h1 class="landing-title" id="landing-title">Hermes<span class="brand-ai">AI</span></h1>
+      <p class="landing-sub mx-auto">
+        AI news from 20+ public sources, deduplicated, topic-tagged, and searchable in one calm dashboard.
       </p>
       <div class="d-flex flex-wrap gap-2 justify-content-center">
-        <a href="{% url 'news:news_list' %}" class="btn btn-primary btn-lg">
-          <i class="fas fa-rss me-1" aria-hidden="true"></i> Browse AI news
+        <a href="{% url 'news:news_list' %}" class="btn btn-accent btn-lg">
+          <i class="fas fa-rss me-2" aria-hidden="true"></i>Browse AI news
         </a>
-        <a href="{% url 'dashboard' %}" class="btn btn-lg" style="background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.28);">
-          <i class="fas fa-gauge-high me-1" aria-hidden="true"></i> Open dashboard
+        <a href="{% url 'dashboard' %}" class="btn btn-hero-ghost btn-lg">
+          <i class="fas fa-gauge-high me-2" aria-hidden="true"></i>Open dashboard
         </a>
       </div>
 
@@ -100,7 +56,7 @@
         <div class="col-6 col-md-3">
           <div class="landing-stat">
             {% if last_run %}
-              <div class="landing-stat-value" style="font-size: 1.15rem;">
+              <div class="landing-stat-value landing-stat-value--time">
                 {{ last_run.finished_at|default:last_run.started_at|timesince }} ago
               </div>
               <div class="landing-stat-label">Last refresh</div>
@@ -117,17 +73,25 @@
   {# ------------------------------------------------------------------ #}
   {# TOPIC CHIPS                                                         #}
   {# ------------------------------------------------------------------ #}
-  <section class="mb-4">
-    <h2 class="h4 mb-3">Explore by topic</h2>
+  <section class="mb-4" aria-labelledby="topics-title">
+    <div class="landing-section-head">
+      <div>
+        <h2 id="topics-title">Explore by topic</h2>
+        <p>Jump straight to the themes you follow.</p>
+      </div>
+      <a href="{% url 'news:news_list' %}" class="btn btn-sm btn-outline-secondary">
+        All topics <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i>
+      </a>
+    </div>
     <div class="d-flex flex-wrap gap-2">
       {% for t in top_topics %}
-        <a class="topic-chip" href="{% url 'news:news_list' %}?topic={{ t.slug }}">
-          <span class="rounded-circle" style="width: .55rem; height: .55rem; background: {{ t.color }};" aria-hidden="true"></span>
+        <a class="topic-chip" href="{% url 'news:news_list' %}?topic={{ t.slug }}" style="--topic-color: {{ t.color }};">
+          <span class="chip-dot" aria-hidden="true"></span>
           {{ t.name }}
           <span class="chip-count">{{ t.article_count }}</span>
         </a>
       {% empty %}
-        <span class="text-muted">Topics appear after the first feed refresh.</span>
+        <p class="text-muted mb-0">Topics appear after the first feed refresh.</p>
       {% endfor %}
     </div>
   </section>
@@ -135,10 +99,13 @@
   {# ------------------------------------------------------------------ #}
   {# LATEST ARTICLES                                                     #}
   {# ------------------------------------------------------------------ #}
-  <section class="mb-4">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <h2 class="h4 mb-0">Latest stories</h2>
-      <a href="{% url 'news:news_list' %}" class="text-decoration-none">
+  <section class="mb-4" aria-labelledby="latest-title">
+    <div class="landing-section-head">
+      <div>
+        <h2 id="latest-title">Latest stories</h2>
+        <p>Fresh from the tracked feeds.</p>
+      </div>
+      <a href="{% url 'news:news_list' %}" class="btn btn-sm btn-outline-secondary">
         View all <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i>
       </a>
     </div>
@@ -146,25 +113,32 @@
       {% for a in latest_articles %}
         <div class="col-12 col-md-6 col-xl-4">
           <article class="card article-card position-relative">
+            {% if a.image_url %}
+              <div class="article-card-media">
+                <img src="{% url 'news:image_proxy' %}?u={{ a.image_url|urlencode }}"
+                     alt="" width="640" height="360" loading="lazy" decoding="async"
+                     onerror="this.parentNode.classList.add('is-empty'); this.remove();">
+              </div>
+            {% endif %}
             <div class="card-body">
-              <div class="d-flex align-items-center gap-2 mb-2 small text-muted">
-                <span class="badge bg-primary-lt text-primary">{{ a.source }}</span>
-                <time datetime="{{ a.published_at|default:a.fetched_at|date:'c' }}" title="{{ a.published_at|default:a.fetched_at }}">
+              <div class="article-card-meta">
+                <span class="story-source">{{ a.source }}</span>
+                <time class="story-time" datetime="{{ a.published_at|default:a.fetched_at|date:'c' }}" title="{{ a.published_at|default:a.fetched_at }}">
                   {{ a.published_at|default:a.fetched_at|timesince }} ago
                 </time>
               </div>
-              <h3 class="h5 mb-2">
+              <h3 class="article-card-title">
                 <a class="text-reset text-decoration-none stretched-link" href="{% url 'news:news_detail' a.pk %}">
                   {{ a.title }}
                 </a>
               </h3>
               {% if a.summary %}
-                <p class="text-muted small mb-2">{{ a.summary|truncatewords:24 }}</p>
+                <p class="story-summary">{{ a.summary|truncatewords:24 }}</p>
               {% endif %}
               {% if a.topics.all %}
-                <div class="d-flex flex-wrap gap-1">
+                <div class="story-topics">
                   {% for t in a.topics.all|slice:":3" %}
-                    <span class="badge bg-secondary-lt text-secondary">{{ t.name }}</span>
+                    <span class="story-topic">{{ t.name }}</span>
                   {% endfor %}
                 </div>
               {% endif %}
@@ -174,12 +148,35 @@
       {% empty %}
         <div class="col-12">
           <div class="card">
-            <div class="card-body text-center text-muted py-5">
-              No stories yet — run a feed refresh to populate the dashboard.
+            <div class="card-body feed-empty">
+              <span class="dh-empty-icon"><i class="fas fa-robot" aria-hidden="true"></i></span>
+              <p class="empty-title">No stories yet</p>
+              <p class="empty-subtitle">Open the feed and run a refresh to populate the dashboard.</p>
+              <div class="empty-action">
+                <a class="btn btn-primary" href="{% url 'news:news_list' %}">
+                  <i class="fas fa-rss me-2" aria-hidden="true"></i>Open the feed
+                </a>
+              </div>
             </div>
           </div>
         </div>
       {% endfor %}
+    </div>
+  </section>
+
+  {# ------------------------------------------------------------------ #}
+  {# CLOSING CTA                                                         #}
+  {# ------------------------------------------------------------------ #}
+  <section class="landing-cta" aria-labelledby="cta-title">
+    <div>
+      <h2 id="cta-title">One feed. Every signal.</h2>
+      <p>Bookmark, read, and search across sources without the tab sprawl.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-accent" href="{% url 'news:news_list' %}">Start reading</a>
+      <a class="btn btn-outline-secondary" href="{% url 'news:news_rss' %}">
+        <i class="fas fa-rss me-1" aria-hidden="true"></i>RSS
+      </a>
     </div>
   </section>
 

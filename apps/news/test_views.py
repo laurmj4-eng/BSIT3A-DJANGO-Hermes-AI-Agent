@@ -103,6 +103,27 @@ class NewsPageTests(TestCase):
         # Session key is created for the page's CSRF cookie.
         self.assertIn("csrftoken", response.cookies)
 
+    def test_feed_renders_article_photo_when_available(self):
+        make_article(
+            title="Photo story",
+            image_url="https://cdn.example.com/feed.jpg",
+        )
+
+        response = self.client.get(reverse("news:news_list"))
+
+        self.assertContains(response, "feed-article-thumb")
+        self.assertContains(
+            response,
+            "u=https%3A//cdn.example.com/feed.jpg",
+        )
+
+    def test_feed_omits_thumb_without_article_photo(self):
+        make_article(title="Text-only story")
+
+        response = self.client.get(reverse("news:news_list"))
+
+        self.assertNotContains(response, "feed-article-thumb")
+
     def test_search_terms_are_anded_across_fields(self):
         target = make_article(title="Claude beats GPT in benchmark")
         make_article(title="Claude only")

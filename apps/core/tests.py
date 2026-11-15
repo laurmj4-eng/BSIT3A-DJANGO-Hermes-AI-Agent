@@ -261,6 +261,18 @@ class DashboardContextTests(TestCase):
         for entry in response.context['model_stats']:
             self.assertEqual(entry['highlights'], [])
 
+    def test_model_coverage_renders_photo_markup(self):
+        article = self._article('Claude ships a photo story', 'Src A', FEEDS[0]['key'])
+        article.image_url = 'https://cdn.example.com/dash.jpg'
+        article.save(update_fields=['image_url'])
+
+        response = self.client.get(reverse('dashboard'))
+
+        self.assertContains(response, 'dash-story-media has-photo')
+        self.assertContains(response, 'dash-story-photo')
+        self.assertContains(response, 'news/image-proxy/')
+        self.assertContains(response, 'u=https%3A//cdn.example.com/dash.jpg')
+
     def test_model_coverage_renders_shelf_markup(self):
         self._article('Claude launches a new reasoning model', 'Src A', FEEDS[0]['key'])
         response = self.client.get(reverse('dashboard'))

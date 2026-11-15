@@ -120,12 +120,14 @@
   }
 
   let helpPanel = null;
+  let helpReturnFocus = null;
 
   function buildHelpPanel() {
     const panel = document.createElement('div');
     panel.className = 'news-feed-help';
     panel.id = 'newsFeedHelp';
     panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
     panel.setAttribute('aria-label', 'Keyboard shortcuts');
     panel.hidden = true;
     panel.innerHTML =
@@ -141,16 +143,58 @@
       '<button type="button" class="btn btn-sm btn-outline-secondary mt-2" data-help-close>Close</button>';
     panel.addEventListener('click', function (e) {
       if (e.target.closest('[data-help-close]')) {
-        panel.hidden = true;
+        closeHelp();
+      }
+    });
+    panel.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeHelp();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const focusable = panel.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
       }
     });
     document.body.appendChild(panel);
     return panel;
   }
 
+  function closeHelp() {
+    if (!helpPanel || helpPanel.hidden) return;
+    helpPanel.hidden = true;
+    if (helpReturnFocus && typeof helpReturnFocus.focus === 'function') {
+      helpReturnFocus.focus();
+    }
+    helpReturnFocus = null;
+  }
+
+  function openHelp() {
+    if (!helpPanel) helpPanel = buildHelpPanel();
+    helpReturnFocus = document.activeElement;
+    helpPanel.hidden = false;
+    const target = helpPanel.querySelector('[data-help-close]');
+    if (target) target.focus();
+  }
+
   function toggleHelp() {
     if (!helpPanel) helpPanel = buildHelpPanel();
-    helpPanel.hidden = !helpPanel.hidden;
+    if (helpPanel.hidden) {
+      openHelp();
+    } else {
+      closeHelp();
+    }
   }
 
   function onShortcutKey(e) {
@@ -199,7 +243,7 @@
       return;
     }
     if (key === 'Escape' && helpPanel && !helpPanel.hidden) {
-      helpPanel.hidden = true;
+      closeHelp();
     }
   }
 
@@ -252,6 +296,11 @@
     if (!cooling && status && status.getAttribute('data-cooldown-message') === '1') {
       status.classList.add('d-none');
       status.removeAttribute('data-cooldown-message');
+    }
+
+    const container = document.getElementById('articlesContainer');
+    if (container) {
+      container.setAttribute('aria-busy', refreshInFlight ? 'true' : 'false');
     }
   }
 
@@ -328,6 +377,7 @@
         status.classList.remove('d-none');
       }
       startCooldown(COOLDOWN_SECONDS);
+      try { window.sessionStorage.setItem('hermes:feed-toast', msg); } catch (e) {}
       setTimeout(function () { window.location.reload(); }, 1200);
     } catch (err) {
       const msg = 'Refresh failed. Please try again.';
@@ -558,6 +608,13 @@
   // ---------- Init ----------
   function init() {
     syncSavedArticles();
+    try {
+      const storedToast = window.sessionStorage.getItem('hermes:feed-toast');
+      if (storedToast) {
+        window.sessionStorage.removeItem('hermes:feed-toast');
+        toast(storedToast, 'success');
+      }
+    } catch (e) {}
     const refreshBtn = document.getElementById('refreshBtn');
     if (refreshBtn) refreshBtn.addEventListener('click', doRefresh);
     document.querySelectorAll('.refresh-trigger').forEach(function (b) {

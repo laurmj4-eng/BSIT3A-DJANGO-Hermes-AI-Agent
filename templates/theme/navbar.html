@@ -6,7 +6,7 @@
       <a class="dh-topbar-brand" href="{% url 'landing' %}">
         <span class="dh-brand-mark"><i class="fa-solid fa-robot"></i></span>
         <span class="lh-1">
-          <span class="dh-brand-name">Hermes<span class="text-warning">AI</span></span>
+          <span class="dh-brand-name">Hermes<span class="brand-ai">AI</span></span>
           <span class="dh-brand-sub">News Agent</span>
         </span>
       </a>
@@ -38,15 +38,36 @@
 
       <div class="dh-topbar-actions">
         <a href="{% url 'news:news_list' %}" class="btn btn-primary btn-sm d-none d-sm-inline-flex">
-          <i class="fas fa-rss me-1"></i> Open feed
+          <i class="fas fa-rss me-1" aria-hidden="true"></i> Open feed
         </a>
+        <button class="dh-icon-btn d-md-none" type="button"
+                data-bs-toggle="collapse" data-bs-target="#dhMobileSearch"
+                aria-controls="dhMobileSearch" aria-expanded="false" aria-label="Toggle search">
+          <i class="fas fa-search" aria-hidden="true"></i>
+        </button>
+        <button class="dh-icon-btn d-lg-none" type="button"
+                data-bs-toggle="offcanvas" data-bs-target="#offcanvasSettings"
+                aria-controls="offcanvasSettings" aria-label="Theme settings">
+          <i class="fas fa-palette" aria-hidden="true"></i>
+        </button>
         <button class="dh-icon-btn d-lg-none" type="button"
                 data-bs-toggle="collapse" data-bs-target="#dhMobileNav"
                 aria-controls="dhMobileNav" aria-expanded="false" aria-label="Toggle navigation">
-          <i class="fas fa-bars"></i>
+          <i class="fas fa-bars" aria-hidden="true"></i>
         </button>
       </div>
 
+    </div>
+
+    <div class="collapse d-md-none" id="dhMobileSearch">
+      <form class="dh-mobile-search" action="{% url 'news:news_list' %}" method="get" role="search">
+        <div class="input-group">
+          <span class="input-group-text"><i class="fas fa-search" aria-hidden="true"></i></span>
+          <input type="search" name="q" value="{{ request.GET.q|default:'' }}" class="form-control"
+                 placeholder="Search AI news..." aria-label="Search AI news">
+          <button class="btn btn-primary" type="submit">Search</button>
+        </div>
+      </form>
     </div>
 
     <div class="collapse d-lg-none" id="dhMobileNav">
@@ -61,14 +82,6 @@
            href="{% url 'news:news_history' %}"
            {% if request.resolver_match.url_name == 'news_history' %}aria-current="page"{% endif %}>History</a>
         <button type="button" class="dh-topbar-link" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSettings" aria-controls="offcanvasSettings">Theme settings</button>
-        <form class="mt-2" action="{% url 'news:news_list' %}" method="get" role="search">
-          <div class="input-group">
-            <span class="input-group-text"><i class="fas fa-search"></i></span>
-            <input type="search" name="q" value="{{ request.GET.q|default:'' }}" class="form-control"
-                   placeholder="Search AI news..." aria-label="Search AI news">
-            <button class="btn btn-primary" type="submit">Search</button>
-          </div>
-        </form>
       </nav>
     </div>
   </div>

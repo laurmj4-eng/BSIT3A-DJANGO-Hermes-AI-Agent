@@ -26,6 +26,19 @@
     }
   }
 
+  var TOAST_KEY = 'hermes:toast';
+
+  function replayStoredToast() {
+    var message = null;
+    try {
+      message = window.sessionStorage.getItem(TOAST_KEY);
+      if (message) { window.sessionStorage.removeItem(TOAST_KEY); }
+    } catch (e) {
+      message = null;
+    }
+    if (message) { toast(message, 'success'); }
+  }
+
   /* ---------------------------------------------------------------
      Refresh buttons (header + latest-refresh card + empty state)
      --------------------------------------------------------------- */
@@ -41,10 +54,27 @@
       btn.addEventListener('click', function () {
         if (busy) { return; }
         busy = true;
+        var page = document.querySelector('.dash-page');
         buttons.forEach(function (b) {
+          if (!b.getAttribute('data-label')) {
+            b.setAttribute('data-label', b.innerHTML);
+          }
           b.disabled = true;
           b.setAttribute('aria-busy', 'true');
+          b.innerHTML = '<i class="fas fa-rotate fa-spin me-1" aria-hidden="true"></i> Refreshing…';
         });
+        if (page) { page.setAttribute('aria-busy', 'true'); }
+
+        function clearBusy() {
+          busy = false;
+          buttons.forEach(function (b) {
+            b.disabled = false;
+            b.removeAttribute('aria-busy');
+            var label = b.getAttribute('data-label');
+            if (label) { b.innerHTML = label; }
+          });
+          if (page) { page.removeAttribute('aria-busy'); }
+        }
 
         fetch(btn.getAttribute('data-refresh-url'), {
           method: 'POST',
@@ -58,27 +88,20 @@
           .then(function (result) {
             if (result.ok) {
               var d = result.data || {};
-              toast('Refresh complete — ' + (d.created || 0) + ' new, ' + (d.updated || 0) + ' updated.', 'success');
-              window.setTimeout(function () { window.location.reload(); }, 900);
+              var message = 'Refresh complete — ' + (d.created || 0) + ' new, ' + (d.updated || 0) + ' updated.';
+              try { window.sessionStorage.setItem(TOAST_KEY, message); } catch (e) {}
+              window.location.reload();
             } else {
-              busy = false;
-              buttons.forEach(function (b) {
-                b.disabled = false;
-                b.removeAttribute('aria-busy');
-              });
-              var message = (result.data && result.data.error) ||
+              clearBusy();
+              var errMessage = (result.data && result.data.error) ||
                 (result.status === 409 ? 'A refresh is already running.' :
                  result.status === 502 ? 'Refresh failed — all feeds errored.' :
                  'Refresh failed (HTTP ' + result.status + ').');
-              toast(message, 'danger');
+              toast(errMessage, 'danger');
             }
           })
           .catch(function () {
-            busy = false;
-            buttons.forEach(function (b) {
-              b.disabled = false;
-              b.removeAttribute('aria-busy');
-            });
+            clearBusy();
             toast('Network error — the refresh could not be started.', 'danger');
           });
       });
@@ -109,6 +132,7 @@
       event.preventDefault();
       if (btn.getAttribute('data-busy') === '1') { return; }
       btn.setAttribute('data-busy', '1');
+      var previousSaved = btn.getAttribute('data-saved') === '1';
 
       fetch(btn.getAttribute('data-save-url'), {
         method: 'POST',
@@ -131,7 +155,8 @@
           }
         })
         .catch(function () {
-          /* CSRF/session failures: stay quiet, restore the button. */
+          paintSaveButton(btn, previousSaved);
+          toast('Could not update bookmark — please retry.', 'danger');
         })
         .finally(function () {
           btn.removeAttribute('data-busy');
@@ -234,9 +259,6 @@
           setShelf(shelf, false);
           return;
         }
-        shelves.forEach(function (other) {
-          if (other !== shelf) { setShelf(other, false); }
-        });
         setShelf(shelf, true);
       });
     });
@@ -249,4 +271,5 @@
   initSaveButtons();
   initRelativeTimes();
   initModelShelves();
+  replayStoredToast();
 })();

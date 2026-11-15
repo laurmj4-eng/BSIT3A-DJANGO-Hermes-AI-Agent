@@ -30,8 +30,13 @@
   <div id="refreshAlert" class="alert d-none mt-3" role="status" aria-live="polite"></div>
 
   <!-- FILTER PANEL -->
-  <form method="get" action="{% url 'news:news_list' %}" class="card mb-3 feed-filter-card" id="filterForm" data-reveal>
+  <div class="card mb-3 feed-filter-card" data-reveal>
     <div class="card-body">
+      <div class="feed-filter-head">
+        <h2 class="feed-filter-title"><i class="fas fa-sliders" aria-hidden="true"></i> Filter the feed</h2>
+        <span class="feed-filter-hint">{{ active_filter_count }} filter{{ active_filter_count|pluralize }} active · {{ total }} result{{ total|pluralize }}</span>
+      </div>
+      <form method="get" action="{% url 'news:news_list' %}" id="filterForm">
       <div class="row g-2 align-items-end">
         <div class="col-12 col-md-6 col-lg-4">
           <label class="form-label" for="q">Search headlines</label>
@@ -40,7 +45,7 @@
             <input type="search" name="q" id="q" value="{{ query }}" class="form-control"
                    placeholder="Keywords or source" role="combobox" aria-autocomplete="list"
                    aria-haspopup="listbox" aria-expanded="false" aria-controls="q-suggestions"
-                   data-autocomplete-url="{% url 'news:news_suggest' %}" aria-label="Search headlines">
+                   data-autocomplete-url="{% url 'news:news_suggest' %}">
             <ul id="q-suggestions" class="dh-autocomplete-list" role="listbox" style="display: none;"></ul>
           </div>
         </div>
@@ -131,11 +136,8 @@
             <i class="fas fa-rotate-left" aria-hidden="true"></i> Clear all
           </a>
         {% endif %}
-        <span class="text-muted small ms-auto">
-          {{ active_filter_count }} filter{{ active_filter_count|pluralize }} active — {{ total }} result{{ total|pluralize }}
-        </span>
       </div>
-  </form>
+      </form>
 
       {% if query or source or topic or date_from or date_to %}
         <form method="post" action="{% url 'news:search_save' %}" class="d-flex flex-wrap gap-2 align-items-center mt-3">
@@ -151,22 +153,23 @@
         <div class="d-flex flex-wrap gap-2 align-items-center mt-2">
           <span class="text-muted small">Saved searches:</span>
           {% for entry in saved_searches %}
-            <span class="dh-chip">
+            <div class="dh-chip">
               <a href="?{{ entry.query }}">{{ entry.name }}</a>
               <form method="post" action="{% url 'news:search_delete' forloop.counter0 %}" class="d-inline">
                 {% csrf_token %}
                 <input type="hidden" name="next" value="{% url 'news:news_list' %}{% if filter_query %}?{{ filter_query }}{% endif %}">
                 <button type="submit" class="btn btn-sm btn-link p-0" aria-label="Delete saved search {{ entry.name }}"><i class="fas fa-xmark chip-x"></i></button>
               </form>
-            </span>
+            </div>
           {% endfor %}
         </div>
       {% endif %}
     </div>
+  </div>
 
   <!-- RESULTS TOOLBAR -->
   <div class="d-flex flex-wrap align-items-center gap-2 mb-3 feed-toolbar">
-    <div class="text-muted small" id="resultsSummary">
+    <div class="text-muted small" id="resultsSummary" role="status" aria-live="polite">
       {% if total %}
         Showing {{ articles.start_index }}–{{ articles.end_index }} of {{ total }}
       {% else %}
@@ -178,19 +181,26 @@
         Saved <strong id="savedCount">{{ saved_total }}</strong> · Read <strong id="readCount">{{ read_total }}</strong>
       </span>
       <div class="btn-group" role="group" aria-label="View mode">
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-view="list" aria-pressed="true">List</button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-view="grid" aria-pressed="false">Grid</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-view="list" aria-controls="articlesContainer" aria-pressed="true">List</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-view="grid" aria-controls="articlesContainer" aria-pressed="false">Grid</button>
       </div>
     </div>
   </div>
 
   <!-- ARTICLES -->
   {% if articles.object_list %}
-    <div id="articlesContainer" class="articles-container feed-view-list">
+    <div id="articlesContainer" class="articles-container feed-view-list" role="region" aria-label="Article results" aria-busy="false">
       {% for a in articles %}
         <article class="card dh-article-card feed-article {% if a.is_read %}is-read{% endif %} {% if a.is_saved %}is-saved{% endif %}" data-article-id="{{ a.id }}" data-article-title="{{ a.title }}" data-article-url="{% url 'news:news_detail' a.pk %}" {% if a.is_saved %}data-saved="1"{% endif %} data-reveal>
           <div class="card-body">
             <div class="d-flex align-items-start gap-3 feed-article-body">
+              {% if a.image_url %}
+                <span class="feed-article-thumb" aria-hidden="true">
+                  <img src="{% url 'news:image_proxy' %}?u={{ a.image_url|urlencode }}"
+                       alt="" width="160" height="120" loading="lazy" decoding="async"
+                       onerror="this.parentNode.classList.add('is-empty'); this.remove();">
+                </span>
+              {% endif %}
               <div class="flex-fill min-w-0">
                 <div class="feed-article-meta mb-2">
                   <span class="badge feed-badge feed-badge-source">{{ a.source }}</span>
@@ -256,7 +266,6 @@
                         data-share-title="{{ a.title }}"
                         aria-label="Share article" title="Share article">
                   <i class="fas fa-share-nodes" aria-hidden="true"></i>
-                  <span class="visually-hidden" data-share-fallback>Copy link</span>
                 </button>
                 <a class="btn btn-ghost-secondary btn-icon feed-action-btn"
                    href="{% url 'news:news_detail' a.pk %}"
@@ -372,5 +381,5 @@
 </div>
 {% endblock %}
 {% block extra_js %}
-<script src="{% static 'js/news-feed.js' %}?v=5" defer></script>
+<script src="{% static 'js/news-feed.js' %}?v=6" defer></script>
 {% endblock %}

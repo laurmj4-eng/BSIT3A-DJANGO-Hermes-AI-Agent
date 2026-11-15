@@ -44,6 +44,22 @@ class PublicPageTests(TestCase):
         self.assertContains(response, 'type="application/rss+xml"')
         self.assertContains(response, 'href="http://testserver/news/rss/"')
 
+    def test_landing_renders_article_photo_when_available(self):
+        self.article.image_url = "https://cdn.example.com/landing.jpg"
+        self.article.save(update_fields=["image_url"])
+
+        response = self.client.get(reverse("landing"))
+
+        self.assertContains(response, "article-card-media")
+        self.assertContains(
+            response,
+            "u=https%3A//cdn.example.com/landing.jpg",
+        )
+
+    def test_landing_omits_media_without_article_photo(self):
+        response = self.client.get(reverse("landing"))
+        self.assertNotContains(response, "article-card-media")
+
     def test_custom_404_page_is_standalone(self):
         from django.test.utils import override_settings
 

@@ -1,8 +1,9 @@
 {% extends "theme/base.html" %}
 {% load static %}
+{% load humanize %}
 {% block extra_css %}
-<link href="{% static 'css/cosmic-hero.css' %}?v=9" rel="stylesheet"/>
-<link href="{% static 'css/dashboard.css' %}?v=10" rel="stylesheet"/>
+<link href="{% static 'css/cosmic-hero.css' %}?v=10" rel="stylesheet"/>
+<link href="{% static 'css/dashboard.css' %}?v=12" rel="stylesheet"/>
 {% endblock %}
 {% block content %}
 <div class="container-xl dash-page">
@@ -50,7 +51,7 @@
       <div class="card-body cosmos-content">
         <div class="cosmos-head text-center">
           <div class="hermes-rule mb-2"></div>
-          <h2 class="hermes-orbit-title mb-1">HERMES AGENT</h2>
+          <p class="hermes-orbit-title mb-1">HERMES AGENT</p>
           <div class="hermes-rule mt-2 mb-3"></div>
         </div>
 
@@ -149,34 +150,29 @@
   {# 3. STAT TILES                                                       #}
   {# ------------------------------------------------------------------ #}
   <section class="dash-stats" aria-label="Key numbers" data-reveal>
-    <a class="dash-stat" href="{% url 'news:news_list' %}">
+    <a class="dash-stat dash-stat--primary" href="{% url 'news:news_list' %}">
       <span class="dash-stat-label">Total articles</span>
-      <span class="dash-stat-value">{{ total_articles }}</span>
-      <span class="dash-stat-meta">+{{ articles_today }} today · {{ articles_week }} this week</span>
+      <span class="dash-stat-value">{{ total_articles|intcomma }}</span>
+      <span class="dash-stat-meta">+{{ articles_today|intcomma }} today · {{ articles_week|intcomma }} this week</span>
     </a>
     <div class="dash-stat">
       <span class="dash-stat-label">Sources</span>
       <span class="dash-stat-value">{{ feeds_ok }}<span class="dash-stat-sub">/{{ configured_sources }}</span></span>
-      <span class="dash-stat-meta">feeds healthy{% if feeds_error %} · {{ feeds_error }} erroring{% endif %}</span>
+      <span class="dash-stat-meta">reporting{% if feeds_error %} · {{ feeds_error }} erroring{% endif %}</span>
     </div>
     <a class="dash-stat" href="{% url 'news:news_list' %}?unread=1">
       <span class="dash-stat-label">Unread</span>
-      <span class="dash-stat-value">{{ unread_total }}</span>
-      <span class="dash-stat-meta">{{ read_total }} read so far</span>
+      <span class="dash-stat-value">{{ unread_total|intcomma }}</span>
+      <span class="dash-stat-meta">{{ read_total|intcomma }} read so far</span>
     </a>
     <a class="dash-stat" href="{% url 'news:news_list' %}?saved=1">
       <span class="dash-stat-label">Saved</span>
-      <span class="dash-stat-value">{{ saved_articles }}</span>
+      <span class="dash-stat-value">{{ saved_articles|intcomma }}</span>
       <span class="dash-stat-meta">bookmarked stories</span>
-    </a>
-    <a class="dash-stat" href="{% url 'news:news_list' %}?sort=newest">
-      <span class="dash-stat-label">This week</span>
-      <span class="dash-stat-value">{{ articles_week }}</span>
-      <span class="dash-stat-meta">fetched in 7 days</span>
     </a>
     <a class="dash-stat" href="{% url 'news:news_list' %}">
       <span class="dash-stat-label">Topics</span>
-      <span class="dash-stat-value">{{ topic_count }}</span>
+      <span class="dash-stat-value">{{ topic_count|intcomma }}</span>
       <span class="dash-stat-meta">tracked themes</span>
     </a>
   </section>
@@ -237,16 +233,27 @@
                 {% endfor %}
               </ul>
             {% else %}
-              <p class="dash-shelf-empty">No stories classified for {{ m.label }} yet.</p>
+              <div class="dash-shelf-empty">
+                <p class="mb-2">No stories classified for {{ m.label }} yet.</p>
+                <button type="button" class="btn btn-outline-secondary btn-sm dash-refresh" data-refresh-url="{% url 'news:news_refresh' %}">
+                  <i class="fas fa-rotate me-1" aria-hidden="true"></i> Refresh feeds now
+                </button>
+              </div>
             {% endif %}
             <a class="dash-shelf-all" href="{% url 'news:news_list' %}?q={{ m.query }}" title="{{ m.desc }}">
               View all {{ m.total }} stor{{ m.total|pluralize:"y,ies" }} <i class="fas fa-arrow-right" aria-hidden="true"></i>
             </a>
           </div>
         </article>
-      {% empty %}
-        <p class="dash-model-empty">No model data yet. Run a refresh to classify articles.</p>
-      {% endfor %}
+          {% empty %}
+            <div class="dash-empty dash-empty-sm">
+              <p class="dash-empty-title">No model data yet</p>
+              <p class="dash-empty-sub">Run a refresh to classify articles by model and platform.</p>
+              <button type="button" class="btn btn-primary btn-sm dash-refresh" data-refresh-url="{% url 'news:news_refresh' %}">
+                <i class="fas fa-rotate me-1" aria-hidden="true"></i> Refresh feeds now
+              </button>
+            </div>
+          {% endfor %}
     </div>
   </section>
 
@@ -375,6 +382,7 @@
             <div class="dash-empty dash-empty-sm">
               <p class="dash-empty-title">No topics yet</p>
               <p class="dash-empty-sub">Topics appear once articles are classified.</p>
+              <a href="{% url 'news:news_list' %}" class="btn btn-outline-secondary btn-sm">Browse AI news</a>
             </div>
           {% endfor %}
         </div>
@@ -409,6 +417,6 @@
     window.HERMES_MODELS = JSON.parse(document.getElementById('hermes-models').textContent);
   } catch (e) { window.HERMES_MODELS = []; }
 </script>
-<script src="{% static 'js/cosmic-hero.js' %}?v=7"></script>
-<script src="{% static 'js/dashboard.js' %}?v=4" defer></script>
+<script src="{% static 'js/cosmic-hero.js' %}?v=8"></script>
+<script src="{% static 'js/dashboard.js' %}?v=5" defer></script>
 {% endblock %}

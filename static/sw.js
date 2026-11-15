@@ -1,4 +1,4 @@
-const CACHE = 'hermes-static-v13';
+const CACHE = 'hermes-static-v17';
 const RUNTIME_CACHE = 'hermes-runtime-v1';
 
 const CORE_URLS = [
@@ -9,6 +9,7 @@ const CORE_URLS = [
   '/static/css/tabler-themes.css',
   '/static/css/app-theme.css',
   '/static/css/app-ui.css',
+  '/static/css/hermes-refresh.css',
   '/static/css/dashboard.css',
   '/static/css/cosmic-hero.css',
   '/static/js/theme-init.js',
@@ -55,7 +56,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((name) => {
-          if (name !== CACHE) {
+          if (name !== CACHE && name !== RUNTIME_CACHE) {
             return caches.delete(name);
           }
         })

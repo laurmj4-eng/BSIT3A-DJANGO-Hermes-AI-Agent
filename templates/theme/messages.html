@@ -1,5 +1,5 @@
 {% if messages %}
-<div class="dh-messages" role="status" aria-live="polite">
+<div class="dh-messages">
   {% for message in messages %}
     <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %} alert-dismissible fade show" role="alert">
       <i class="fas {% if message.tags == 'success' %}fa-circle-check{% elif message.tags == 'error' %}fa-circle-exclamation{% elif message.tags == 'warning' %}fa-triangle-exclamation{% else %}fa-circle-info{% endif %} alert-icon" aria-hidden="true"></i>

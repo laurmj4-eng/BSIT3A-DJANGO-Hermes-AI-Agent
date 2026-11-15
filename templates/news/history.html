@@ -9,36 +9,48 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-xl py-3">
-  <h1 class="page-title mb-3">Reading history</h1>
+<div class="container-xl news-feed py-3">
+  <div class="page-header d-print-none mb-3">
+    <h1 class="page-title mb-1">Reading history</h1>
+    <p class="text-muted mb-0">Articles you opened, newest first.</p>
+  </div>
 
   {% if not items %}
     <div class="card">
-      <div class="card-body">
-        <p class="text-muted mb-0">No reading history yet. Open an article and it will appear here.</p>
+      <div class="card-body feed-empty">
+        <span class="dh-empty-icon"><i class="fas fa-clock-rotate-left" aria-hidden="true"></i></span>
+        <p class="empty-title">No reading history yet</p>
+        <p class="empty-subtitle">Open an article and it will appear here.</p>
+        <div class="empty-action">
+          <a class="btn btn-primary" href="{% url 'news:news_list' %}">
+            <i class="fas fa-rss me-2" aria-hidden="true"></i>Browse AI news
+          </a>
+        </div>
       </div>
     </div>
   {% else %}
-    <div class="list-group">
+    <div class="history-list">
       {% for item in items %}
-        <div class="list-group-item">
-          <div class="d-flex w-100 justify-content-between align-items-start gap-2">
-            <div class="me-2">
-              <h5 class="mb-1">
-                <a href="{% url 'news:news_detail' item.article.pk %}">{{ item.article.title }}</a>
-              </h5>
-              <div class="d-flex flex-wrap align-items-center gap-2">
-                <span class="badge feed-badge feed-badge-source">{{ item.article.source }}</span>
-                <span class="text-muted small feed-read-time">
-                  <i class="fas fa-clock me-1" aria-hidden="true"></i>{{ item.article.summary|read_time }}
-                </span>
+        <article class="card history-item">
+          <div class="card-body">
+            <div class="d-flex w-100 justify-content-between align-items-start gap-2">
+              <div class="me-2 min-w-0">
+                <h2 class="history-title">
+                  <a href="{% url 'news:news_detail' item.article.pk %}">{{ item.article.title }}</a>
+                </h2>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <span class="badge feed-badge feed-badge-source">{{ item.article.source }}</span>
+                  <span class="text-muted small feed-read-time">
+                    <i class="fas fa-clock me-1" aria-hidden="true"></i>{{ item.article.summary|read_time }}
+                  </span>
+                </div>
               </div>
+              <time class="history-time" datetime="{{ item.at }}">
+                {% if item.at_display %}{{ item.at_display|date:"M j, Y H:i" }}{% else %}{{ item.at }}{% endif %}
+              </time>
             </div>
-            <time class="text-muted small text-nowrap" datetime="{{ item.at }}">
-              {% if item.at_display %}{{ item.at_display|date:"M j, Y H:i" }}{% else %}{{ item.at }}{% endif %}
-            </time>
           </div>
-        </div>
+        </article>
       {% endfor %}
     </div>
   {% endif %}

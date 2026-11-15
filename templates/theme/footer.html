@@ -1,24 +1,17 @@
 <!--  BEGIN FOOTER  -->
 <footer class="footer footer-transparent dh-footer d-print-none">
   <div class="container-xl">
-    <div class="row text-center align-items-center flex-row-reverse">
-      <div class="col-lg-auto ms-lg-auto">
-        <ul class="list-inline list-inline-dots mb-0">
-          <li class="list-inline-item">
-            <a href="{% url 'dashboard' %}" class="link-secondary text-decoration-none">
-              <i class="fas fa-robot me-1"></i> Hermes AI News Agent
-            </a>
-          </li>
-        </ul>
-      </div>
-      <div class="col-12 col-lg-auto mt-3 mt-lg-0">
-        <ul class="list-inline list-inline-dots mb-0">
-          <li class="list-inline-item">
-            Copyright &copy; {% now "Y" %}
-            <a href="{% url 'dashboard' %}" class="link-secondary text-decoration-none">Hermes AI</a>. All rights reserved.
-          </li>
-        </ul>
-      </div>
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 py-2">
+      <a class="footer-brand" href="{% url 'landing' %}">
+        <i class="fas fa-robot" aria-hidden="true"></i> Hermes AI News
+      </a>
+      <nav class="footer-links" aria-label="Footer">
+        <a href="{% url 'dashboard' %}">Dashboard</a>
+        <a href="{% url 'news:news_list' %}">AI News</a>
+        <a href="{% url 'news:news_history' %}">History</a>
+        <a href="{% url 'news:news_api' %}">API</a>
+      </nav>
+      <span class="text-muted small">Copyright &copy; {% now "Y" %} Hermes AI</span>
     </div>
   </div>
 </footer>

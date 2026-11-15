@@ -45,9 +45,9 @@
 
   <article class="card dh-article-card">
     {% if article.image_url %}
-      <img class="card-img-top"
+      <img class="card-img-top article-hero"
            src="{% url 'news:image_proxy' %}?u={{ article.image_url|urlencode }}"
-           alt="" loading="lazy" decoding="async"/>
+           alt="{{ article.title }}" loading="eager" decoding="async" fetchpriority="high"/>
     {% endif %}
 
     <div class="card-body">
@@ -102,7 +102,6 @@
                 aria-label="Share this article">
           <i class="fas fa-share-nodes me-1" aria-hidden="true"></i>
           <span data-share-label>Share</span>
-          <span class="visually-hidden" data-share-fallback>Copy link</span>
         </button>
       </div>
     </div>
@@ -138,5 +137,5 @@
 </div>
 {% endblock %}
 {% block extra_js %}
-<script src="{% static 'js/news-feed.js' %}?v=5" defer></script>
+<script src="{% static 'js/news-feed.js' %}?v=6" defer></script>
 {% endblock %}

@@ -741,7 +741,7 @@ void main() {
     rectTick = window.requestAnimationFrame(function () {
       rectTick = 0;
       refreshRect();
-      kick(2);
+      if (speed > 0.001 || view.dragging) { kick(2); }
     });
   }
 

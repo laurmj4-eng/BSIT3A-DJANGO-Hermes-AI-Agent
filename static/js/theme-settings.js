@@ -46,7 +46,7 @@
 				document.documentElement.setAttribute("data-bs-" + name, value);
 				window.localStorage.setItem("tabler-" + name, value);
 				url.searchParams.set(name, value);
-				window.history.pushState({}, "", url);
+				window.history.replaceState({}, "", url);
 			}
 		});
 
