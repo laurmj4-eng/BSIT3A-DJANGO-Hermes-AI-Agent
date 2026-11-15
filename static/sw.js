@@ -1,4 +1,4 @@
-const CACHE = 'hermes-static-v17';
+const CACHE = 'hermes-static-v18';
 const RUNTIME_CACHE = 'hermes-runtime-v1';
 
 const CORE_URLS = [
@@ -10,6 +10,7 @@ const CORE_URLS = [
   '/static/css/app-theme.css',
   '/static/css/app-ui.css',
   '/static/css/hermes-refresh.css',
+  '/static/css/ai-overview.css',
   '/static/css/dashboard.css',
   '/static/css/cosmic-hero.css',
   '/static/js/theme-init.js',

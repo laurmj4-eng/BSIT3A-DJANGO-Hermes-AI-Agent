@@ -142,6 +142,22 @@ class NewsPageTests(TestCase):
 
         self.assertEqual([a.pk for a in page_articles(response)], [target.pk])
 
+    def test_search_matches_topic_name_or_keywords_without_duplicates(self):
+        cyber = Topic.objects.create(
+            slug="cyber", name="Cybersecurity", color="#6366f1", keywords="cyberattack, malware"
+        )
+        ai = Topic.objects.create(
+            slug="ai2", name="AI Safety", color="#6366f1", keywords="alignment"
+        )
+        cyber_article = make_article(title="Enterprise defense update")
+        cyber_article.topics.add(cyber, ai)
+        unrelated = make_article(title="Sports roundup")
+        unrelated.topics.add(ai)
+
+        response = self.client.get(reverse("news:news_list"), {"q": "cyberattack"})
+
+        self.assertEqual([a.pk for a in page_articles(response)], [cyber_article.pk])
+
     def test_source_filter(self):
         target = make_article(feed_key="feed_a")
         make_article(feed_key="feed_b")
@@ -643,3 +659,33 @@ class CsrfTests(TestCase):
             self.client.get(reverse("news:news_open", args=[article.pk])).status_code,
             302,
         )
+
+class NewsOverviewTests(TestCase):
+    @patch("apps.news.views._build_overview_safe", return_value={"summary": "fixture"})
+    def test_overview_with_query(self, mock_build):
+        make_article(title="cyberattack story")
+        response = self.client.get(reverse("news:news_list"), {"q": "cyberattack"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["overview"], {"summary": "fixture"})
+
+    def test_overview_without_query(self):
+        make_article(title="something")
+        response = self.client.get(reverse("news:news_list"))
+        self.assertIsNone(response.context["overview"])
+
+    def test_overview_zero_results(self):
+        response = self.client.get(reverse("news:news_list"), {"q": "unlikelyterm"})
+        self.assertIsNone(response.context["overview"])
+
+    def test_overview_uses_real_extractive_engine(self):
+        make_article(
+            title="Cyberattack disrupts port operations",
+            summary="Officials confirmed the cyberattack affected three terminals today.",
+        )
+
+        response = self.client.get(reverse("news:news_list"), {"q": "cyberattack"})
+
+        overview = response.context["overview"]
+        self.assertEqual(overview["mode"], "local")
+        self.assertGreaterEqual(len(overview["bullets"]), 1)
+        self.assertTrue(overview["bullets"][0]["url"])

@@ -209,7 +209,10 @@ def _apply_filters(request, qs, include_session: bool = True):
                 Q(title__icontains=term)
                 | Q(summary__icontains=term)
                 | Q(source__icontains=term)
+                | Q(topics__name__icontains=term)
+                | Q(topics__keywords__icontains=term)
             )
+        qs = qs.distinct()
 
     if source:
         qs = qs.filter(feed_key=source)
@@ -364,6 +367,14 @@ def _source_options() -> tuple[list[dict], list[tuple[str, str]]]:
     return source_options, source_choices
 
 
+def _build_overview_safe(query, articles):
+    try:
+        from .overview_engine import build_overview
+        return build_overview(query, articles)
+    except Exception:
+        return None
+
+
 # ---------------------------------------------------------------------------
 # HTML page
 # ---------------------------------------------------------------------------
@@ -377,6 +388,11 @@ def news_page(request):
     that would otherwise trigger Django to set it).
     """
     articles, filter_ctx = _apply_filters(request, Article.objects.all())
+
+    if filter_ctx["query"] and articles.exists():
+        overview = _build_overview_safe(filter_ctx["query"], list(articles[:8]))
+    else:
+        overview = None
 
     paginator = Paginator(articles, PER_PAGE)
     page = paginator.get_page(request.GET.get("page", 1))
@@ -434,6 +450,7 @@ def news_page(request):
         "unread_toggle_query": unread_params.urlencode(),
         "refresh_cooldown_seconds": REFRESH_COOLDOWN_SECONDS,
         "refresh_cooldown_remaining": refresh_cooldown_remaining(),
+        "overview": overview,
     }
     context.update(filter_ctx)
     return render(request, "news/feed.html", context)

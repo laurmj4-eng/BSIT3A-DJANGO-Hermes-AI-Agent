@@ -4,6 +4,7 @@
 {% block title %}AI News · Hermes{% endblock %}
 {% block extra_css %}
 <link href="{% static 'css/news-feed.css' %}?v=4" rel="stylesheet"/>
+<link href="{% static 'css/ai-overview.css' %}?v=1" rel="stylesheet"/>
 {% endblock %}
 {% block content %}
 <div class="container-xl news-feed">
@@ -166,6 +167,54 @@
       {% endif %}
     </div>
   </div>
+
+  <!-- AI OVERVIEW -->
+  {% if overview %}
+    <section class="ai-overview" aria-labelledby="ai-overview-title">
+      <div class="ai-overview-header d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+          <h2 id="ai-overview-title" class="ai-overview-title mb-0">
+            <i class="fas fa-wand-magic-sparkles ai-overview-icon" aria-hidden="true"></i>
+            AI Overview
+          </h2>
+          <span class="badge ai-overview-beta">Beta</span>
+        </div>
+        {% if overview.mode == "local" %}
+          <span class="ai-overview-mode">Local extractive summary</span>
+        {% endif %}
+      </div>
+      <p class="ai-overview-lead">{{ overview.lead }}</p>
+      <ul class="ai-overview-bullets">
+        {% for bullet in overview.bullets %}
+          <li class="ai-overview-bullet">
+            {{ bullet.text }}
+            {% if bullet.url %}
+              <a href="{{ bullet.url }}" class="ai-overview-cite" target="_blank" rel="noopener noreferrer" aria-label="Source: {{ bullet.source }}">{{ bullet.source }}</a>
+            {% else %}
+              <span class="ai-overview-cite">{{ bullet.source }}</span>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+      <div class="ai-overview-sources mt-4">
+        <h3 class="ai-overview-sources-title">Sources</h3>
+        <ol class="ai-overview-sources-list">
+          {% for src in overview.sources %}
+            <li class="ai-overview-source-item">
+              {% if src.url %}
+                <a href="{{ src.url }}" class="ai-overview-source-link" target="_blank" rel="noopener noreferrer">{{ src.title }}</a>
+              {% else %}
+                <span class="ai-overview-source-link">{{ src.title }}</span>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ol>
+      </div>
+      <p class="ai-overview-footer mt-4">
+        Compiled from {{ overview.source_count }} recent article{{ overview.source_count|pluralize }}. Verify with the original sources.
+      </p>
+    </section>
+  {% endif %}
 
   <!-- RESULTS TOOLBAR -->
   <div class="d-flex flex-wrap align-items-center gap-2 mb-3 feed-toolbar">

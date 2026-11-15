@@ -315,3 +315,34 @@ class FetchAllFeedsTests(SimpleTestCase):
             articles, errors = fetch_all_feeds()
         self.assertEqual([a["feed_key"] for a in articles], [s["key"] for s in FEEDS])
         self.assertEqual(errors, [])
+
+
+class CyberFeedTests(SimpleTestCase):
+    def test_feeds_contains_new_cyber_keys(self):
+        keys = {spec["key"] for spec in FEEDS}
+        for key in (
+            "google_cyber",
+            "thehackernews",
+            "bleepingcomputer",
+            "krebs",
+            "darkreading",
+            "securityweek",
+            "cyberscoop",
+            "therecord",
+        ):
+            self.assertIn(key, keys)
+
+    def test_google_cyber_spec_strips_publisher_suffix(self):
+        spec = next(s for s in FEEDS if s["key"] == "google_cyber")
+        body = b"""<?xml version="1.0"?>
+        <rss version="2.0"><channel>
+          <item>
+            <title>Cyberattack hits systems - Example Publisher</title>
+            <link>https://example.com/cyber-story</link>
+            <description>Cyberattack hits systems Example Publisher</description>
+          </item>
+        </channel></rss>"""
+        with patch("apps.news.feeds.urlopen", _fake_urlopen(body)):
+            articles = fetch_feed(spec)
+        self.assertEqual(articles[0]["title"], "Cyberattack hits systems")
+        self.assertEqual(articles[0]["summary"], "")

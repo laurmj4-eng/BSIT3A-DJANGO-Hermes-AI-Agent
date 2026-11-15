@@ -120,6 +120,31 @@ TOPIC_DEFS = [
             'devin',
         ],
     },
+    {
+        'slug': 'cybersecurity',
+        'name': 'Cybersecurity',
+        'color': '#dc2626',
+        'description': 'Cyberattacks, breaches, vulnerabilities and threat actors',
+        'keywords': [
+            'cyberattack',
+            'cyberattacks',
+            'cybersecurity',
+            'ransomware',
+            'malware',
+            'breach',
+            'data leak',
+            'data leaks',
+            'vulnerability',
+            'zero-day',
+            'phishing',
+            'threat actor',
+            'threat actors',
+            'cve',
+            'security incident',
+            'security incidents',
+            'hacked',
+        ],
+    },
 ]
 
 TOPIC_SLUGS = [d['slug'] for d in TOPIC_DEFS]

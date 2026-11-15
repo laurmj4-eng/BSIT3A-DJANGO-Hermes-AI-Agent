@@ -171,6 +171,51 @@ FEEDS = [
         "name": "MIT News — AI",
         "url": "https://news.mit.edu/rss/topic/artificial-intelligence2",
     },
+    # Cybersecurity coverage (verified 2026-11-15).
+    {
+        "key": "google_cyber",
+        "name": "Google News - Cyber",
+        "url": (
+            "https://news.google.com/rss/search?q=cyberattack+OR+cybersecurity+OR+ransomware+when%3A7d"
+            "&hl=en-US&gl=US&ceid=US%3Aen"
+        ),
+        "strip_title_suffix": True,
+    },
+    {
+        "key": "thehackernews",
+        "name": "The Hacker News",
+        "url": "https://feeds.feedburner.com/TheHackersNews",
+    },
+    {
+        "key": "bleepingcomputer",
+        "name": "BleepingComputer",
+        "url": "https://www.bleepingcomputer.com/feed/",
+    },
+    {
+        "key": "krebs",
+        "name": "Krebs on Security",
+        "url": "https://krebsonsecurity.com/feed/",
+    },
+    {
+        "key": "darkreading",
+        "name": "Dark Reading",
+        "url": "https://www.darkreading.com/rss.xml",
+    },
+    {
+        "key": "securityweek",
+        "name": "SecurityWeek",
+        "url": "https://www.securityweek.com/feed/",
+    },
+    {
+        "key": "cyberscoop",
+        "name": "CyberScoop",
+        "url": "https://cyberscoop.com/feed/",
+    },
+    {
+        "key": "therecord",
+        "name": "The Record",
+        "url": "https://therecord.media/feed",
+    },
 ]
 
 # XML namespaces we care about when normalising
