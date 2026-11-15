@@ -7,7 +7,13 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from apps.news.image_proxy import ImageProxyError, _sniff_type, _validate_url
-from apps.news.images import extract_og_image, fetch_og_image
+from apps.news.images import (
+    extract_content_image,
+    extract_og_image,
+    fetch_og_image,
+    resolve_google_news,
+    resolve_hacker_news,
+)
 from apps.news.models import Article
 
 
@@ -64,6 +70,90 @@ class ExtractOgImageTests(TestCase):
     def test_data_uri_in_og_image_rejected(self):
         html = '<meta property="og:image" content="data:image/png;base64,AAAA">'
         self.assertEqual(extract_og_image(html), '')
+
+
+class ContentImageTests(TestCase):
+    def test_accepts_large_editorial_image(self):
+        html = '<img src="/photos/story.jpg" width="1200" height="675" alt="Story">'
+        self.assertEqual(
+            extract_content_image(html, 'https://example.com/post'),
+            'https://example.com/photos/story.jpg',
+        )
+
+    def test_skips_logo_and_small_images(self):
+        html = (
+            '<img src="/assets/logo.png" width="1200" height="675">'
+            '<img src="/icons/badge.png" width="800" height="450">'
+            '<img src="/photos/small.jpg" width="120" height="80">'
+            '<img src="/photos/hero.jpg" width="800" height="450">'
+        )
+        self.assertEqual(
+            extract_content_image(html, 'https://example.com/post'),
+            'https://example.com/photos/hero.jpg',
+        )
+
+    def test_skips_data_and_relative_junk(self):
+        html = '<img src="data:image/png;base64,AAAA"><img src="javascript:alert(1)">'
+        self.assertEqual(extract_content_image(html, 'https://example.com/'), '')
+
+
+class ResolverTests(TestCase):
+    def test_google_news_resolves_to_publisher(self):
+        first = (
+            b'<div data-n-a-sg="sig-value" data-n-a-ts="1700000000"></div>',
+            'https://news.google.com/rss/articles/abc?oc=5',
+            'text/html',
+            'utf-8',
+        )
+        second = (
+            b'[["garturlres","https://publisher.example/story",1]]',
+            'https://news.google.com/_/DotsSplashUi/data/batchexecute',
+            'text/plain',
+            'utf-8',
+        )
+        with patch(
+            'apps.news.images._safe_open', side_effect=[first, second]
+        ), patch('apps.news.images._validate_url'):
+            resolved = resolve_google_news(
+                'https://news.google.com/rss/articles/abc?oc=5'
+            )
+        self.assertEqual(resolved, 'https://publisher.example/story')
+
+    def test_google_news_missing_signature_returns_empty(self):
+        with patch(
+            'apps.news.images._safe_open',
+            return_value=(b'<html>consent</html>', 'https://news.google.com/x', 'text/html', 'utf-8'),
+        ):
+            resolved = resolve_google_news('https://news.google.com/rss/articles/abc')
+        self.assertEqual(resolved, '')
+
+    def test_hacker_news_resolves_submitted_story(self):
+        html = (
+            b'<span class="titleline"><a href="https://story.example/post">'
+            b'A story</a></span>'
+        )
+        with patch(
+            'apps.news.images._safe_open',
+            return_value=(html, 'https://news.ycombinator.com/item?id=1', 'text/html', 'utf-8'),
+        ), patch('apps.news.images._validate_url'):
+            resolved = resolve_hacker_news('https://news.ycombinator.com/item?id=1')
+        self.assertEqual(resolved, 'https://story.example/post')
+
+    def test_fetch_uses_publisher_after_google_news_resolution(self):
+        html = b'<meta property="og:image" content="https://cdn.example/story.jpg">'
+        with patch(
+            'apps.news.images.resolve_google_news',
+            return_value='https://publisher.example/story',
+        ), patch(
+            'apps.news.images._safe_open',
+            return_value=(html, 'https://publisher.example/story', 'text/html', 'utf-8'),
+        ) as open_mock, patch('apps.news.images._validate_url'):
+            image, final_url = fetch_og_image(
+                'https://news.google.com/rss/articles/abc?oc=5'
+            )
+        self.assertEqual(image, 'https://cdn.example/story.jpg')
+        self.assertEqual(final_url, 'https://publisher.example/story')
+        self.assertEqual(open_mock.call_args.args[0], 'https://publisher.example/story')
 
 
 class FetchOgImageTests(TestCase):

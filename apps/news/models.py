@@ -79,6 +79,7 @@ class RefreshRun(models.Model):
     created_count = models.PositiveIntegerField(default=0)
     updated_count = models.PositiveIntegerField(default=0)
     total_articles = models.PositiveIntegerField(default=0)
+    harvested_images = models.PositiveIntegerField(default=0)
     errors = models.JSONField(default=list, blank=True)
 
     class Meta:

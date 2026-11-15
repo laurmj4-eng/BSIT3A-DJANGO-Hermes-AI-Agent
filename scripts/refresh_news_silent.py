@@ -23,6 +23,12 @@ with open(log_path, "a", encoding="utf-8") as log:
     print("[silent] refresh start")
     try:
         call_command("refresh_news", limit=25)
+        # The refresh harvests a small batch; drain more of the image queue
+        # every hour so new Google News rows do not outpace image collection.
+        try:
+            call_command("backfill_images", workers=6, limit=80, timeout=6)
+        except Exception as exc:
+            print("[silent] image backfill failed:", repr(exc))
     except Exception as exc:  # keep the task exit code meaningful
         print("[silent] refresh failed:", repr(exc))
         raise

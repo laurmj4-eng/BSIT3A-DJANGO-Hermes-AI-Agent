@@ -93,6 +93,32 @@ class RunRefreshTests(TestCase):
         self.assertTrue(run.errors)
         self.assertEqual(run.created_count, 0)
 
+    def test_harvest_runs_only_when_limit_requested(self):
+        with patch(
+            "apps.news.services.fetch_all_feeds",
+            return_value=([_article("https://example.com/1")], []),
+        ), patch(
+            "apps.news.image_harvest.harvest_and_save",
+            return_value=(4, 3, 3),
+        ) as harvest:
+            run = run_refresh(harvest_limit=5)
+
+        harvest.assert_called_once_with(limit=5)
+        self.assertEqual(run.harvested_images, 3)
+        self.assertEqual(latest_run().harvested_images, 3)
+
+    def test_harvest_is_off_by_default(self):
+        with patch(
+            "apps.news.services.fetch_all_feeds",
+            return_value=([_article("https://example.com/1")], []),
+        ), patch(
+            "apps.news.image_harvest.harvest_and_save",
+        ) as harvest:
+            run = run_refresh()
+
+        harvest.assert_not_called()
+        self.assertEqual(run.harvested_images, 0)
+
     def test_crash_marks_run_failed_and_reraises(self):
         with patch(
             "apps.news.services.fetch_all_feeds",
@@ -139,7 +165,7 @@ class CommandTests(TestCase):
             "apps.news.services.fetch_all_feeds",
             return_value=([_article("https://example.com/1")], []),
         ):
-            call_command("refresh_news", "--limit", 10)
+            call_command("refresh_news", "--limit", 10, "--images", 0)
         run = latest_run()
         self.assertEqual(run.status, "success")
         self.assertEqual(run.trigger, "command")
@@ -149,7 +175,7 @@ class CommandTests(TestCase):
         RefreshRun.objects.create(status="running")
         with patch("apps.news.services.fetch_all_feeds") as mock_fetch:
             with self.assertRaises(Exception):
-                call_command("refresh_news")
+                call_command("refresh_news", "--images", 0)
         mock_fetch.assert_not_called()
 
     def test_force_clears_lock(self):
@@ -158,6 +184,6 @@ class CommandTests(TestCase):
             "apps.news.services.fetch_all_feeds",
             return_value=([_article("https://example.com/1")], []),
         ):
-            call_command("refresh_news", "--force")
+            call_command("refresh_news", "--force", "--images", 0)
         self.assertEqual(latest_run().status, "success")
         self.assertFalse(RefreshRun.objects.filter(status="running").exists())

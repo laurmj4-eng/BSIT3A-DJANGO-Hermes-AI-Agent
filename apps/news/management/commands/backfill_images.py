@@ -42,6 +42,24 @@ class Command(BaseCommand):
             default=8.0,
             help="Per-request timeout in seconds (default 8.0).",
         )
+        parser.add_argument(
+            "--workers",
+            type=int,
+            default=1,
+            help=(
+                "Parallel fetchers (default 1). Values above 1 ignore --delay "
+                "and are best for a large backfill."
+            ),
+        )
+        parser.add_argument(
+            "--deadline",
+            type=float,
+            default=0.0,
+            help=(
+                "Wall-clock budget for a parallel run in seconds; 0 waits for "
+                "every per-request timeout (default 0)."
+            ),
+        )
 
     def handle(self, *args, **options):
         # Imported lazily so this command loads even if the module is mid-write.
@@ -58,6 +76,26 @@ class Command(BaseCommand):
             qs = qs.filter(Q(image_url="") | Q(image_url__isnull=True))
         if limit and limit > 0:
             qs = qs[:limit]
+
+        workers = max(1, options["workers"])
+        if workers > 1:
+            from apps.news.image_harvest import harvest_images, save_hits
+
+            rows = list(qs)
+            hits = harvest_images(
+                rows,
+                max_images=len(rows),
+                workers=workers,
+                timeout=timeout,
+                deadline=options["deadline"],
+            )
+            saved = 0 if dry_run else save_hits(hits, existing=refresh_existing)
+            self.stdout.write(
+                f"backfill_images: scanned={len(rows)} found={len(hits)} "
+                f"saved={saved} failed={len(rows) - len(hits)} "
+                f"dry_run={dry_run} workers={workers}"
+            )
+            return
 
         scanned = 0
         found = 0

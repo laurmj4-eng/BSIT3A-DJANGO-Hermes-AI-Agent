@@ -14,7 +14,7 @@ import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from urllib.error import HTTPError
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
 # Keep responses small and fail fast rather than hanging the request.
@@ -178,6 +178,7 @@ NS = {
     "atom": "http://www.w3.org/2005/Atom",
     "content": "http://purl.org/rss/1.0/modules/content/",
     "dc": "http://purl.org/dc/elements/1.1/",
+    "media": "http://search.yahoo.com/mrss/",
 }
 
 _TAG_RE = re.compile(r"<[^>]+>")
@@ -263,6 +264,52 @@ def _atom_link(entry: ET.Element) -> str | None:
         if best is None:
             best = href
     return best
+
+
+def _entry_image(entry: ET.Element, article_url: str) -> str:
+    """Return an image URL advertised by an RSS entry, or ''.
+
+    Covers Media RSS (``media:content`` / ``media:thumbnail``), podcast-style
+    ``<enclosure type="image/...">`` and an ``<img>`` inside the summary.
+    Only absolute http(s) URLs are accepted after resolution.
+    """
+    def resolve(value: str | None) -> str:
+        if not value:
+            return ''
+        candidate = value.strip()
+        if not candidate:
+            return ''
+        resolved = urljoin(article_url, candidate)
+        return normalise_url(resolved) or ''
+
+    for node in entry.findall('.//media:content', NS) + entry.findall('.//media:thumbnail', NS):
+        medium = (node.get('medium') or '').strip().lower()
+        content_type = (node.get('type') or '').strip().lower()
+        if medium and medium != 'image':
+            continue
+        if content_type and not content_type.startswith('image/'):
+            continue
+        image = resolve(node.get('url'))
+        if image:
+            return image
+
+    for node in entry.findall('enclosure') + entry.findall('atom:link', NS):
+        content_type = (node.get('type') or '').strip().lower()
+        if not content_type.startswith('image/'):
+            continue
+        image = resolve(node.get('url') or node.get('href'))
+        if image:
+            return image
+
+    for path in ('description', 'atom:summary', 'content:encoded'):
+        node = entry.find(path, NS)
+        if node is None or not node.text:
+            continue
+        for match in re.finditer(r'<img\b[^>]*\bsrc\s*=\s*["\']([^"\']+)["\']', node.text, re.IGNORECASE):
+            image = resolve(match.group(1))
+            if image:
+                return image
+    return ''
 
 
 def _is_echo_of(title: str, summary: str) -> bool:
@@ -415,6 +462,7 @@ def fetch_feed(spec: dict) -> list[dict]:
                 "title": title,
                 "url": url,
                 "summary": summary,
+                "image_url": _entry_image(entry, url),
                 "published_at": published,
             }
         )

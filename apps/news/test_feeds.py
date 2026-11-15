@@ -6,12 +6,14 @@ from urllib.error import HTTPError
 from urllib.request import URLError
 import io
 import types
+import xml.etree.ElementTree as ET
 
 from django.test import SimpleTestCase
 
 from apps.news.feeds import (
     FEEDS,
     FeedError,
+    _entry_image,
     _is_echo_of,
     _parse_date,
     fetch_all_feeds,
@@ -222,6 +224,55 @@ class FetchFeedTests(SimpleTestCase):
         with patch("apps.news.feeds.urlopen", _boom):
             with self.assertRaises(FeedError):
                 fetch_feed(FEEDS[0])
+
+
+class EntryImageTests(SimpleTestCase):
+    def test_media_content_image(self):
+        entry = ET.fromstring(
+            '<item xmlns:media="http://search.yahoo.com/mrss/">'
+            '<media:content url="https://cdn.example/story.jpg" medium="image"/>'
+            '</item>'
+        )
+        self.assertEqual(
+            _entry_image(entry, 'https://example.com/story'),
+            'https://cdn.example/story.jpg',
+        )
+
+    def test_media_thumbnail_relative_url(self):
+        entry = ET.fromstring(
+            '<item xmlns:media="http://search.yahoo.com/mrss/">'
+            '<media:thumbnail url="/img/thumb.jpg"/>'
+            '</item>'
+        )
+        self.assertEqual(
+            _entry_image(entry, 'https://example.com/story'),
+            'https://example.com/img/thumb.jpg',
+        )
+
+    def test_image_enclosure(self):
+        entry = ET.fromstring(
+            '<item><enclosure url="https://cdn.example/a.png" type="image/png"/></item>'
+        )
+        self.assertEqual(
+            _entry_image(entry, 'https://example.com/story'),
+            'https://cdn.example/a.png',
+        )
+
+    def test_non_image_enclosure_ignored(self):
+        entry = ET.fromstring(
+            '<item><enclosure url="https://cdn.example/a.mp3" type="audio/mpeg"/></item>'
+        )
+        self.assertEqual(_entry_image(entry, 'https://example.com/story'), '')
+
+    def test_image_in_summary_html(self):
+        entry = ET.fromstring(
+            '<item><description><![CDATA[<p><img src="/img/inline.jpg" alt="x"></p>]]>'
+            '</description></item>'
+        )
+        self.assertEqual(
+            _entry_image(entry, 'https://example.com/story'),
+            'https://example.com/img/inline.jpg',
+        )
 
 
 class IsEchoOfTests(SimpleTestCase):

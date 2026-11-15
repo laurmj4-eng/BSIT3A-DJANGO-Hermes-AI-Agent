@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from .classification import apply_topics
@@ -43,11 +44,18 @@ def _close_stale_runs(now, extra_error: dict | None = None) -> int:
     return count
 
 
-def run_refresh(trigger: str = "web", per_feed_limit: int = 25) -> RefreshRun:
+def run_refresh(
+    trigger: str = "web", per_feed_limit: int = 25, harvest_limit: int = 0
+) -> RefreshRun:
     """Fetch all feeds and upsert articles, recording a ``RefreshRun``.
 
+    ``harvest_limit`` also fetches preview images for up to that many cached
+    articles with no image yet. The web refresh leaves it at zero so an
+    anonymous request never becomes a pile of outbound fetches; the command
+    (cron / Task Scheduler) opts in.
+
     Raises ``RefreshLockError`` when a non-stale refresh is already running.
-    Never raises for feed-level failures — the run's ``status``/``errors``
+    Never raises for feed-level failures - the run's ``status``/``errors``
     carry the outcome so the caller decides the HTTP status.
     """
     now = timezone.now()
@@ -81,6 +89,11 @@ def run_refresh(trigger: str = "web", per_feed_limit: int = 25) -> RefreshRun:
                     created_count += 1
                 else:
                     updated_count += 1
+                feed_image = (item.get("image_url") or "")[:500]
+                if feed_image and not article.image_url:
+                    Article.objects.filter(pk=article.pk).filter(
+                        Q(image_url="") | Q(image_url__isnull=True)
+                    ).update(image_url=feed_image)
                 try:
                     apply_topics(article)
                 except Exception:
@@ -92,6 +105,18 @@ def run_refresh(trigger: str = "web", per_feed_limit: int = 25) -> RefreshRun:
             update_latest_models()
         except Exception:
             pass
+
+        # Optional image harvest.  A network failure here must not mark the
+        # feed refresh itself as failed; the next run retries the queue.
+        harvested = 0
+        if harvest_limit > 0:
+            try:
+                from .image_harvest import harvest_and_save
+
+                _scanned, _found, harvested = harvest_and_save(limit=harvest_limit)
+            except Exception:
+                pass
+        run.harvested_images = harvested
 
         run.finished_at = timezone.now()
         run.created_count = created_count

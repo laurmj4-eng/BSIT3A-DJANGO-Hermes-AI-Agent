@@ -18,6 +18,15 @@ class Command(BaseCommand):
             help="Maximum articles kept per feed (default 25).",
         )
         parser.add_argument(
+            "--images",
+            type=int,
+            default=12,
+            help=(
+                "Harvest preview images for up to N image-less articles after "
+                "the feed refresh (default 12; 0 disables)."
+            ),
+        )
+        parser.add_argument(
             "--force",
             action="store_true",
             help="Clear running locks (mark them failed) before refreshing.",
@@ -51,7 +60,11 @@ class Command(BaseCommand):
                 )
 
         try:
-            run = run_refresh(trigger="command", per_feed_limit=options["limit"])
+            run = run_refresh(
+                trigger="command",
+                per_feed_limit=options["limit"],
+                harvest_limit=max(0, options["images"]),
+            )
         except RefreshLockError as exc:
             raise CommandError(
                 f"Refresh skipped: {exc} Use --force to clear a stuck lock."
@@ -60,11 +73,12 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 "Refresh {status}: created={created} updated={updated} "
-                "total={total} errors={errors}".format(
+                "total={total} images={images} errors={errors}".format(
                     status=run.status,
                     created=run.created_count,
                     updated=run.updated_count,
                     total=run.total_articles,
+                    images=getattr(run, "harvested_images", 0),
                     errors=len(run.errors or []),
                 )
             )
