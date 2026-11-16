@@ -216,6 +216,15 @@ FEEDS = [
         "name": "The Record",
         "url": "https://therecord.media/feed",
     },
+    {
+        "key": "google_ph_cyber",
+        "name": "Google News - Philippines Cyber",
+        "url": (
+            "https://news.google.com/rss/search?q=Philippines+cyberattack"
+            "&hl=en-PH&gl=PH&ceid=PH%3Aen"
+        ),
+        "strip_title_suffix": True,
+    },
 ]
 
 # XML namespaces we care about when normalising

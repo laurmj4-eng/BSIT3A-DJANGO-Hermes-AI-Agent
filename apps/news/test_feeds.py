@@ -329,8 +329,15 @@ class CyberFeedTests(SimpleTestCase):
             "securityweek",
             "cyberscoop",
             "therecord",
+            "google_ph_cyber",
         ):
             self.assertIn(key, keys)
+
+    def test_philippines_cyber_feed_uses_ph_locale(self):
+        spec = next(s for s in FEEDS if s["key"] == "google_ph_cyber")
+        self.assertIn("hl=en-PH", spec["url"])
+        self.assertIn("gl=PH", spec["url"])
+        self.assertIn("ceid=PH%3Aen", spec["url"])
 
     def test_google_cyber_spec_strips_publisher_suffix(self):
         spec = next(s for s in FEEDS if s["key"] == "google_cyber")
